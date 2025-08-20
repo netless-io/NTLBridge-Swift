@@ -1,0 +1,25 @@
+{
+  "name": "webview-bridge-test",
+  "version": "1.0.0",
+  "description": "Webview Bridge Test using Vite",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite --no-open",
+    "build": "vite build",
+    "preview": "vite preview",
+    "serve": "vite preview"
+  },
+  "keywords": [
+    "webview",
+    "bridge",
+    "test"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "vite": "^5.0.0"
+  },
+  "dependencies": {
+    "@netless/webview-bridge": "^0.1.11"
+  }
+}
