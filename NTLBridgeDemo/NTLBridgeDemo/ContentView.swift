@@ -58,7 +58,7 @@ struct ContentView: View {
                 Text(model.jsResult ?? "No result yet")
             }
             Button("Call js sync") {
-                model.webView.callJavaScript(method: "syn.tag") { r in
+                model.webView.callBridge(method: "syn.tag") { r in
                     switch r {
                     case .success(let value):
                         model.jsResult = value.debugDescription
@@ -68,7 +68,7 @@ struct ContentView: View {
                 }
             }
             Button("Call js sync multiparam") {
-                model.webView.callJavaScript(method: "syn.multi", args: [.string("1"), .array([.number(111)])]) { r in
+                model.webView.callBridge(method: "syn.multi", args: [.string("1"), .array([.number(111)])]) { r in
                     switch r {
                     case .success(let value):
                         model.jsResult = value.debugDescription
@@ -78,7 +78,7 @@ struct ContentView: View {
                 }
             }
             Button("Call js async") {
-                model.webView.callJavaScript(method: "asyn.tag", args: [.string("AAA")]) { r in
+                model.webView.callBridge(method: "asyn.tag", args: [.string("AAA")]) { r in
                     switch r {
                     case .success(let value):
                         model.jsResult = value.debugDescription
@@ -88,7 +88,7 @@ struct ContentView: View {
                 }
             }
             Button("Call js async multiParam") {
-                model.webView.callJavaScript(method: "asyn.multiParam", args: [.string("BBB"), .dictionary(["ppp": "ttt"])]) { r in
+                model.webView.callBridge(method: "asyn.multiParam", args: [.string("BBB"), .dictionary(["ppp": "ttt"])]) { r in
                     switch r {
                     case .success(let value):
                         model.jsResult = value.debugDescription

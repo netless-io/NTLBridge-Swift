@@ -71,7 +71,7 @@ webView.registerAsync(methodName: "fetchData") { param, completion in
 
 ```swift
 // 调用 JavaScript 方法
-webView.callJavaScript(method: "showAlert", args: ["来自 Swift 
+webView.callBridge(method: "showAlert", args: ["来自 Swift 
 的问候！"]) { result in
     switch result {
     case .success(let value):
@@ -81,7 +81,7 @@ webView.callJavaScript(method: "showAlert", args: ["来自 Swift
     }
 }
 // 使用多个参数调用
-webView.callJavaScript(method: "calculate", args: [10, 20, "add"])
+webView.callBridge(method: "calculate", args: [10, 20, "add"])
 ```
 
 ## Web 集成

@@ -233,13 +233,13 @@ open class NTLWebView: WKWebView {
     
     // MARK: - JavaScript Communication
     
-    /// 调用JavaScript方法
+    /// 调用 js bridge 方法
     /// - Parameters:
     ///   - method: JavaScript注册方法名，比如 "nameA.funcB"
     ///   - args: 参数数组
     ///   - completion: 完成回调
     ///   - discussion: js 端目前 async 只用 callback 来注册回调。参数长度要固定。不支持 Promise。
-    public func callJavaScript(
+    public func callBridge(
         method: String,
         args: [JSONValue] = [],
         completion: ((Result<JSONValue?, Error>) -> Void)? = nil
