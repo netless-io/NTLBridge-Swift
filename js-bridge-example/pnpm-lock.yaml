@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@netless/webview-bridge':
-        specifier: ^0.1.11
-        version: 0.1.11(uuid@7.0.3)
+        specifier: ^0.1.12
+        version: 0.1.12(uuid@7.0.3)
     devDependencies:
       vite:
         specifier: ^5.0.0
@@ -156,8 +156,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@netless/webview-bridge@0.1.11':
-    resolution: {integrity: sha512-gXrYQUlxDx1I6nWfVIr7oQdzOGhDnnoCCg6oUEEsbeygh/J2VBDdHO/Jk3hn/Rs3b7lFNJV5e5wSZznAdo5bbQ==}
+  '@netless/webview-bridge@0.1.12':
+    resolution: {integrity: sha512-0/qRw5TptNLd2dKHhQCxuWlBeOS41J46pGfdxB+QP7M18nQzfjYk1/qakU1JbpBfFtgjTjfvqJrjmgP28IVPZQ==}
     peerDependencies:
       uuid: ^7.0.3
 
@@ -401,7 +401,7 @@ snapshots:
   '@esbuild/win32-x64@0.21.5':
     optional: true
 
-  '@netless/webview-bridge@0.1.11(uuid@7.0.3)':
+  '@netless/webview-bridge@0.1.12(uuid@7.0.3)':
     dependencies:
       uuid: 7.0.3
 

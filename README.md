@@ -9,21 +9,22 @@ NTLBridge-Swift 是一个强大且轻量级的 JavaScript 桥接库，专为 iOS
 JavaScript 之间实现无缝的双向通信，并完全兼容
 https://github.com/netless-io/Whiteboard-bridge 规范。
 
- ## 功能特性
+## 功能特性
 
 - 双向通信：从 JavaScript 调用原生方法，反之亦然
 - 异步与同步支持：同时支持同步和异步方法调用
 
- ## 安装
+## 安装
 
 ### Swift Package Manager
+
 .package(url: "https://github.com/your-org/NTLBridge-Swift.git", from: "1.0.0")
 
-##  快速入门
+## 快速入门
 
 ### 1. 基础设置
 
-``` swift
+```swift
 import NTLBridge
 import WebKit
 class ViewController: UIViewController {
@@ -46,9 +47,9 @@ url.deletingLastPathComponent())
 }
 ```
 
-###  2. 注册原生方法
+### 2. 注册原生方法
 
-``` swift
+```swift
 // 注册简单方法
 webView.register(methodName: "getDeviceInfo") { param in
     return .dictionary([
@@ -68,7 +69,7 @@ webView.registerAsync(methodName: "fetchData") { param, completion in
 
 ### 3. 从原生调用 JavaScript
 
-``` swift
+```swift
 // 调用 JavaScript 方法
 webView.callJavaScript(method: "showAlert", args: ["来自 Swift 
 的问候！"]) { result in
@@ -83,11 +84,11 @@ webView.callJavaScript(method: "showAlert", args: ["来自 Swift
 webView.callJavaScript(method: "calculate", args: [10, 20, "add"])
 ```
 
-##  Web 集成
+## Web 集成
 
-###  使用 Whiteboard-bridge
+### 使用 Whiteboard-bridge
 
-Web 端使用 https://github.com/netless-io/Whiteboard-bridge 实现无缝集成：
+Web 端使用 https://github.com/netless-io/Whiteboard-bridge 实现无缝集成：版本需要大于 @netless/webview-bridge@0.1.12
 
 ```html
   <!DOCTYPE html>
@@ -116,4 +117,4 @@ Web 端使用 https://github.com/netless-io/Whiteboard-bridge 实现无缝集成
       <h1>桥接测试页面</h1>
   </body>
   </html>
-  ```
+```

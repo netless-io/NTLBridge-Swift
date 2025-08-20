@@ -2,6 +2,7 @@
   "name": "webview-bridge-test",
   "version": "1.0.0",
   "description": "Webview Bridge Test using Vite",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "dev": "vite --no-open",
@@ -20,6 +21,6 @@
     "vite": "^5.0.0"
   },
   "dependencies": {
-    "@netless/webview-bridge": "^0.1.11"
+    "@netless/webview-bridge": "^0.1.12"
   }
 }

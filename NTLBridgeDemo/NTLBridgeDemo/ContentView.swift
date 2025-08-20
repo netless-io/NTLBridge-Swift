@@ -17,7 +17,7 @@ class Model {
         let webView = NTLWebView(frame: .init(x: 0, y: 0, width: 244, height: 244), configuration: configuration)
         webView.isDebugMode = true
         webView.isInspectable = true
-        webView.load(.init(url: .init(string: "http://localhost:3001/")!))
+        webView.load(.init(url: .init(string: "http://localhost:3000/")!))
         
         webView.register(methodName: "testSyn") { args in
             print("get testSyn arg", args)
@@ -44,6 +44,8 @@ class Model {
         self.webView = webView
     }
     let webView: NTLWebView
+    
+    var jsResult: String?
 }
 
 struct ContentView: View {
@@ -51,13 +53,17 @@ struct ContentView: View {
     
     var body: some View {
         VStack {
+            HStack {
+                Text("JS Result")
+                Text(model.jsResult ?? "No result yet")
+            }
             Button("Call js sync") {
                 model.webView.callJavaScript(method: "syn.tag") { r in
                     switch r {
                     case .success(let value):
-                        print("Sync call result:", value)
-                    case .failure(let error):
-                        print("Error calling sync method:", error)
+                        model.jsResult = value.debugDescription
+                    case .failure:
+                        return
                     }
                 }
             }
@@ -65,20 +71,30 @@ struct ContentView: View {
                 model.webView.callJavaScript(method: "syn.multi", args: [.string("1"), .array([.number(111)])]) { r in
                     switch r {
                     case .success(let value):
-                        print("Sync multi param call result:", value)
-                    case .failure(let error):
-                        print("Error calling sync multi param method:", error)
+                        model.jsResult = value.debugDescription
+                    case .failure:
+                        return
                     }
                 }
             }
             Button("Call js async") {
                 model.webView.callJavaScript(method: "asyn.tag", args: [.string("AAA")]) { r in
-                    print(r)
+                    switch r {
+                    case .success(let value):
+                        model.jsResult = value.debugDescription
+                    case .failure:
+                        return
+                    }
                 }
             }
             Button("Call js async multiParam") {
                 model.webView.callJavaScript(method: "asyn.multiParam", args: [.string("BBB"), .dictionary(["ppp": "ttt"])]) { r in
-                    print(r)
+                    switch r {
+                    case .success(let value):
+                        model.jsResult = value.debugDescription
+                    case .failure:
+                        return
+                    }
                 }
             }
         }
