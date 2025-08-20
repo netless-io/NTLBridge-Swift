@@ -1,0 +1,45 @@
+name: Run Tests on Sources Change
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'Sources/**'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'Sources/**'
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Swift
+      uses: swift-actions/setup-swift@v1
+      with:
+        swift-version: '5.9'
+        
+    - name: Cache Swift PM
+      uses: actions/cache@v3
+      with:
+        path: .build
+        key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+        restore-keys: |
+          ${{ runner.os }}-spm-
+          
+    - name: Run tests
+      run: swift test --enable-code-coverage
+      
+    - name: Upload coverage to Codecov
+      if: success()
+      uses: codecov/codecov-action@v3
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: .build/debug/codecov/*.json
+        flags: unittests
+        name: codecov-umbrella
