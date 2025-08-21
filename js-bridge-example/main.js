@@ -122,7 +122,20 @@ bridge.registerAsync("startTimer", () => {
 // Register namespace methods
 bridge.register("syn", {
     tag: (param) => { console.log("fff", param); return "v1"; },
-    multi: (p1, p2) => { console.log(p1, p2); return { p1, p2}; }
+    multi: (p1, p2) => { console.log(p1, p2); return { p1, p2}; },
+    error: (param) => {
+      console.log("error", param);
+      const error = new Error("This is a test synchronous error");
+      const structuredError = {
+            name: error.name,
+            message: error.message,
+            code: error.code || 'UNKNOWN',
+            stack: error.stack,
+      }
+      console.log(structuredError);
+      console.log(JSON.stringify(structuredError));
+      throw error;
+    }
 });
 bridge.registerAsync("asyn", {
     tag: (param, callback) => { 
@@ -130,6 +143,10 @@ bridge.registerAsync("asyn", {
         setTimeout(() => {
             callback({value: 222});
         }, 1000);
+    },
+    error: async (param, callback) => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      throw new Error("This is a test asynchronous error");
     },
     multiParam: (p1, p2, callback) => {
         console.log("multiparam", p1, p2);

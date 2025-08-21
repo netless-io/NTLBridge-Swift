@@ -446,10 +446,19 @@ extension NTLWebView: WKScriptMessageHandler {
         let callbackIdInt = Int(callbackId)
         let data = dictionary["data"]
         let complete = dictionary["complete"]?.boolValue ?? true
+        let error = dictionary["error"]
+        
+        
         
         if let completion = pendingCallbacks[callbackIdInt] {
             if complete {
                 pendingCallbacks.removeValue(forKey: callbackIdInt)
+            }
+            if let error {
+                if let structedError = jsStructuredError(jsonValue: error) {
+                    completion(.failure(structedError))
+                    return
+                }
             }
             completion(.success(data))
         }

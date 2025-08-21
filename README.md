@@ -88,7 +88,7 @@ webView.callBridge(method: "calculate", args: [10, 20, "add"])
 
 ### 使用 Whiteboard-bridge
 
-Web 端使用 https://github.com/netless-io/Whiteboard-bridge 实现无缝集成：版本需要大于 @netless/webview-bridge@0.1.12
+Web 端使用 https://github.com/netless-io/Whiteboard-bridge 实现无缝集成：版本需要大于 @netless/webview-bridge@0.2.1
 
 ```html
   <!DOCTYPE html>

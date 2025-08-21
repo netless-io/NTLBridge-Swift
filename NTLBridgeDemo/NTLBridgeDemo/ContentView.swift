@@ -51,6 +51,15 @@ class Model {
 struct ContentView: View {
     let model: Model = Model()
     
+    func process(_ result: Result<JSONValue?, Error>) {
+        switch result {
+        case .success(let value):
+            model.jsResult = value.debugDescription
+        case .failure(let error):
+            model.jsResult = error.localizedDescription
+        }
+    }
+                
     var body: some View {
         VStack {
             HStack {
@@ -58,44 +67,22 @@ struct ContentView: View {
                 Text(model.jsResult ?? "No result yet")
             }
             Button("Call js sync") {
-                model.webView.callBridge(method: "syn.tag") { r in
-                    switch r {
-                    case .success(let value):
-                        model.jsResult = value.debugDescription
-                    case .failure:
-                        return
-                    }
-                }
+                model.webView.callBridge(method: "syn.tag") { process($0) }
             }
             Button("Call js sync multiparam") {
-                model.webView.callBridge(method: "syn.multi", args: [.string("1"), .array([.number(111)])]) { r in
-                    switch r {
-                    case .success(let value):
-                        model.jsResult = value.debugDescription
-                    case .failure:
-                        return
-                    }
-                }
+                model.webView.callBridge(method: "syn.multi", args: [.string("1"), .array([.number(111)])])  { process($0) }
+            }
+            Button("Call js error") {
+                model.webView.callBridge(method: "syn.error") { process($0) }
             }
             Button("Call js async") {
-                model.webView.callBridge(method: "asyn.tag", args: [.string("AAA")]) { r in
-                    switch r {
-                    case .success(let value):
-                        model.jsResult = value.debugDescription
-                    case .failure:
-                        return
-                    }
-                }
+                model.webView.callBridge(method: "asyn.tag", args: [.string("AAA")]) { process($0) }
+            }
+            Button("Call js async error") {
+                model.webView.callBridge(method: "asyn.error", args: [.string("AAA")]) { process($0) }
             }
             Button("Call js async multiParam") {
-                model.webView.callBridge(method: "asyn.multiParam", args: [.string("BBB"), .dictionary(["ppp": "ttt"])]) { r in
-                    switch r {
-                    case .success(let value):
-                        model.jsResult = value.debugDescription
-                    case .failure:
-                        return
-                    }
-                }
+                model.webView.callBridge(method: "asyn.multiParam", args: [.string("BBB"), .dictionary(["ppp": "ttt"])]) { process($0) }
             }
         }
         
