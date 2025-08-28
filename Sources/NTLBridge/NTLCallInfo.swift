@@ -31,4 +31,28 @@ public struct NTLCallInfo: Codable, Equatable {
             self.data = "null"
         }
     }
+    
+    /// 便捷初始化方法，直接传入Codable类型数据
+    public init<T: Codable>(method: String, callbackId: Int, codableData: T) throws {
+        self.method = method
+        self.callbackId = callbackId
+        
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(codableData)
+        self.data = String(data: data, encoding: .utf8) ?? "{}"
+    }
+    
+    /// 便捷初始化方法，直接传入可选Codable类型数据
+    public init<T: Codable>(method: String, callbackId: Int, codableData: T?) throws {
+        self.method = method
+        self.callbackId = callbackId
+        
+        if let codableData = codableData {
+            let encoder = JSONEncoder()
+            let data = try encoder.encode(codableData)
+            self.data = String(data: data, encoding: .utf8) ?? "{}"
+        } else {
+            self.data = "null"
+        }
+    }
 }

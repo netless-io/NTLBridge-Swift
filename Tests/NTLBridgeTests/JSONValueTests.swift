@@ -276,4 +276,222 @@ struct JSONValueTests {
         let rawDict = dictValue.rawValue as? [String: Any?]
         #expect(rawDict?["key"] as? String == "value")
     }
+    
+    // MARK: - Codable Integration Tests
+    
+    @Test("JSONValue from Codable struct")
+    func testJSONValueFromCodableStruct() throws {
+        struct User: Codable, Equatable {
+            let id: Int
+            let name: String
+            let isActive: Bool
+        }
+        
+        let user = User(id: 1, name: "Alice", isActive: true)
+        let jsonValue = try JSONValue(codable: user)
+        
+        #expect(jsonValue.isDictionary == true)
+        #expect(jsonValue.dictionaryValue?["id"] == .number(1))
+        #expect(jsonValue.dictionaryValue?["name"] == .string("Alice"))
+        #expect(jsonValue.dictionaryValue?["isActive"] == .bool(true))
+    }
+    
+    @Test("JSONValue from Codable class")
+    func testJSONValueFromCodableClass() throws {
+        class Product: Codable, Equatable {
+            let sku: String
+            let price: Double
+            let inStock: Bool
+            
+            init(sku: String, price: Double, inStock: Bool) {
+                self.sku = sku
+                self.price = price
+                self.inStock = inStock
+            }
+            
+            static func == (lhs: Product, rhs: Product) -> Bool {
+                return lhs.sku == rhs.sku && lhs.price == rhs.price && lhs.inStock == rhs.inStock
+            }
+        }
+        
+        let product = Product(sku: "PRD-001", price: 29.99, inStock: true)
+        let jsonValue = try JSONValue(codable: product)
+        
+        #expect(jsonValue.isDictionary == true)
+        #expect(jsonValue.dictionaryValue?["sku"] == .string("PRD-001"))
+        #expect(jsonValue.dictionaryValue?["price"] == .number(29.99))
+        #expect(jsonValue.dictionaryValue?["inStock"] == .bool(true))
+    }
+    
+    @Test("JSONValue from Codable enum")
+    func testJSONValueFromCodableEnum() throws {
+        enum Status: String, Codable {
+            case active
+            case inactive
+            case pending
+        }
+        
+        let status = Status.active
+        let jsonValue = try JSONValue(codable: status)
+        
+        #expect(jsonValue.isString == true)
+        #expect(jsonValue.stringValue == "active")
+    }
+    
+    @Test("JSONValue from Codable array")
+    func testJSONValueFromCodableArray() throws {
+        struct Item: Codable {
+            let name: String
+            let quantity: Int
+        }
+        
+        let items = [Item(name: "Apple", quantity: 5), Item(name: "Banana", quantity: 3)]
+        let jsonValue = try JSONValue(codable: items)
+        
+        #expect(jsonValue.isArray == true)
+        #expect(jsonValue.arrayValue?.count == 2)
+        #expect(jsonValue.arrayValue?[0].dictionaryValue?["name"] == .string("Apple"))
+        #expect(jsonValue.arrayValue?[0].dictionaryValue?["quantity"] == .number(5))
+        #expect(jsonValue.arrayValue?[1].dictionaryValue?["name"] == .string("Banana"))
+        #expect(jsonValue.arrayValue?[1].dictionaryValue?["quantity"] == .number(3))
+    }
+    
+    @Test("JSONValue from Codable dictionary")
+    func testJSONValueFromCodableDictionary() throws {
+        let metadata: [String: String] = [
+            "version": "1.0.0",
+            "author": "Developer",
+            "license": "MIT"
+        ]
+        
+        let jsonValue = try JSONValue(codable: metadata)
+        
+        #expect(jsonValue.isDictionary == true)
+        #expect(jsonValue.dictionaryValue?["version"] == .string("1.0.0"))
+        #expect(jsonValue.dictionaryValue?["author"] == .string("Developer"))
+        #expect(jsonValue.dictionaryValue?["license"] == .string("MIT"))
+    }
+    
+    @Test("JSONValue from nested Codable structure")
+    func testJSONValueFromNestedCodableStructure() throws {
+        struct Address: Codable {
+            let street: String
+            let city: String
+            let zipCode: String
+        }
+        
+        struct Person: Codable {
+            let name: String
+            let age: Int
+            let address: Address
+            let hobbies: [String]
+        }
+        
+        let person = Person(
+            name: "Bob",
+            age: 30,
+            address: Address(street: "123 Main St", city: "New York", zipCode: "10001"),
+            hobbies: ["reading", "swimming", "coding"]
+        )
+        
+        let jsonValue = try JSONValue(codable: person)
+        
+        #expect(jsonValue.isDictionary == true)
+        #expect(jsonValue.dictionaryValue?["name"] == .string("Bob"))
+        #expect(jsonValue.dictionaryValue?["age"] == .number(30))
+        
+        let address = jsonValue.dictionaryValue?["address"]?.dictionaryValue
+        #expect(address?["street"] == .string("123 Main St"))
+        #expect(address?["city"] == .string("New York"))
+        #expect(address?["zipCode"] == .string("10001"))
+        
+        let hobbies = jsonValue.dictionaryValue?["hobbies"]?.arrayValue
+        #expect(hobbies?.count == 3)
+        #expect(hobbies?[0] == .string("reading"))
+        #expect(hobbies?[1] == .string("swimming"))
+        #expect(hobbies?[2] == .string("coding"))
+    }
+    
+    @Test("JSONValue from optional Codable")
+    func testJSONValueFromOptionalCodable() throws {
+        struct Config: Codable {
+            let apiKey: String?
+            let debugMode: Bool?
+        }
+        
+        let configWithValues = Config(apiKey: "secret-key", debugMode: true)
+        let configWithNil = Config(apiKey: nil, debugMode: nil)
+        
+        let jsonValue1 = try JSONValue(codable: configWithValues)
+        let jsonValue2 = try JSONValue(codable: configWithNil)
+        
+        #expect(jsonValue1.dictionaryValue?["apiKey"] == .string("secret-key"))
+        #expect(jsonValue1.dictionaryValue?["debugMode"] == .bool(true))
+        
+        // Note: Default JSON encoder omits nil values, so these keys won't be present
+        #expect(jsonValue2.dictionaryValue?["apiKey"] == nil)
+        #expect(jsonValue2.dictionaryValue?["debugMode"] == nil)
+    }
+    
+    @Test("JSONValue from Codable with custom coding keys")
+    func testJSONValueFromCodableWithCustomCodingKeys() throws {
+        struct User: Codable {
+            let userId: Int
+            let fullName: String
+            
+            enum CodingKeys: String, CodingKey {
+                case userId = "user_id"
+                case fullName = "full_name"
+            }
+        }
+        
+        let user = User(userId: 123, fullName: "John Doe")
+        let jsonValue = try JSONValue(codable: user)
+        
+        #expect(jsonValue.isDictionary == true)
+        #expect(jsonValue.dictionaryValue?["user_id"] == .number(123))
+        #expect(jsonValue.dictionaryValue?["full_name"] == .string("John Doe"))
+        #expect(jsonValue.dictionaryValue?["userId"] == nil)
+        #expect(jsonValue.dictionaryValue?["fullName"] == nil)
+    }
+    
+    @Test("JSONValue from Codable with dates")
+    func testJSONValueFromCodableWithDates() throws {
+        struct Event: Codable {
+            let name: String
+            let date: Date
+        }
+        
+        let date = Date(timeIntervalSince1970: 1234567890)
+        let event = Event(name: "Conference", date: date)
+        let jsonValue = try JSONValue(codable: event)
+        
+        #expect(jsonValue.isDictionary == true)
+        #expect(jsonValue.dictionaryValue?["name"] == .string("Conference"))
+        #expect(jsonValue.dictionaryValue?["date"]?.isNumber == true)
+        
+        // Verify the date is properly encoded as timestamp (default strategy)
+        let timestamp = jsonValue.dictionaryValue?["date"]?.numberValue
+        #expect(timestamp != nil)
+    }
+    
+    @Test("JSONValue from Codable with data")
+    func testJSONValueFromCodableWithData() throws {
+        struct File: Codable {
+            let name: String
+            let content: Data
+        }
+        
+        let content = "Hello, World!".data(using: .utf8)!
+        let file = File(name: "greeting.txt", content: content)
+        let jsonValue = try JSONValue(codable: file)
+        
+        #expect(jsonValue.isDictionary == true)
+        #expect(jsonValue.dictionaryValue?["name"] == .string("greeting.txt"))
+        #expect(jsonValue.dictionaryValue?["content"]?.isString == true)
+        
+        // Verify the data is properly encoded as base64 string
+        let base64String = jsonValue.dictionaryValue?["content"]?.stringValue
+        #expect(base64String != nil)
+    }
 }
