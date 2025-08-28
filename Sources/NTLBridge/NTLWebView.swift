@@ -91,6 +91,9 @@ open class NTLWebView: WKWebView {
         // 设置UIDelegate以支持同步调用
         uiDelegate = self
         
+        // 设置NavigationDelegate以监听页面导航
+        navigationDelegate = self
+        
         // 创建弱引用代理避免循环引用
         scriptMessageProxy = WeakScriptMessageHandlerProxy(target: self)
         
@@ -109,6 +112,24 @@ open class NTLWebView: WKWebView {
         scriptMessageProxy = nil
         registeredHandlers.removeAll()
         pendingCallbacks.removeAll()
+    }
+    
+    /// 清理所有待处理的JavaScript调用任务
+    private func cleanupPendingJSCalls() {
+        // 清理待处理的回调，并通知调用方页面已切换
+        for (_, completion) in pendingCallbacks {
+            let error = NSError(domain: "NTLBridge", code: -2, userInfo: [NSLocalizedDescriptionKey: "Page navigation occurred, JavaScript call cancelled"])
+            completion(.failure(error))
+        }
+        pendingCallbacks.removeAll()
+        
+        // 清理启动队列
+        startupCallQueue.removeAll()
+        
+        // 重置初始化状态
+        isInitialized = false
+        
+        debugLog("Cleaned up all pending JavaScript calls due to page navigation")
     }
     
     private func injectBridgeScript() {
@@ -347,6 +368,15 @@ open class NTLWebView: WKWebView {
     }
 }
 
+// MARK: - WKNavigationDelegate
+
+extension NTLWebView: WKNavigationDelegate {
+    public func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        // 当开始新的页面导航时，清理所有待处理的JavaScript调用任务
+        cleanupPendingJSCalls()
+    }
+}
+
 // MARK: - WKScriptMessageHandler
 
 extension NTLWebView: WKScriptMessageHandler {
@@ -440,7 +470,7 @@ extension NTLWebView: WKScriptMessageHandler {
         completion(.success(data))
     }
     
-    private func handleReturnValueFromJS(_ param: JSONValue) {
+    internal func handleReturnValueFromJS(_ param: JSONValue) {
         guard case let .dictionary(dictionary) = param, let callbackId = dictionary["id"]?.numberValue
         else { return }
         let callbackIdInt = Int(callbackId)

@@ -1,260 +1,262 @@
-import Testing
-@testable import NTLBridge
-import WebKit
 import Foundation
+import Testing
+import WebKit
+
+@testable import NTLBridge
 
 @Suite("NTLWebView Tests")
 struct NTLWebViewTests {
-    
     // MARK: - Helper Classes
-    
+
     class TestTarget {
         var name: String
-        
+
         init(name: String) {
             self.name = name
         }
-        
+
         func getName(args: JSONValue) throws -> JSONValue? {
             return .string(name)
         }
-        
+
         func echo(args: JSONValue) throws -> JSONValue? {
             if case .array(let array) = args {
                 return array.first
             }
             return args
         }
-        
+
         func throwError(args: JSONValue) throws -> JSONValue? {
-            throw NSError(domain: "TestError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Test error"])
+            throw NSError(
+                domain: "TestError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Test error"]
+            )
         }
     }
-    
+
     // MARK: - Initialization Tests
-    
+
     @Test("WebView initialization")
-    func testWebViewInitialization() async {
+    func webViewInitialization() async {
         await MainActor.run {
             let configuration = WKWebViewConfiguration()
             let webView = NTLWebView(frame: .zero, configuration: configuration)
-            
+
             // 检查DSBridge兼容API
             #expect(webView.registeredMethods.contains("_dsb.returnValue"))
             #expect(webView.registeredMethods.contains("_dsb.dsinit"))
         }
     }
-    
+
     // MARK: - Registration Tests
-    
+
     @Test("Register instance method")
-    func testRegisterInstanceMethod() async {
+    func registerInstanceMethod() async {
         await MainActor.run {
             let webView = NTLWebView()
             let target = TestTarget(name: "John")
-            
+
             webView.register(methodName: "getName", target: target) { target, args in
-                return try target.getName(args: args)
+                try target.getName(args: args)
             }
-            
+
             #expect(webView.registeredMethods.contains("getName"))
         }
     }
-    
+
     @Test("Register static method")
-    func testRegisterStaticMethod() async {
+    func registerStaticMethod() async {
         await MainActor.run {
             let webView = NTLWebView()
-            
-            webView.register(methodName: "getVersion") { args in
-                return .string("1.0.0")
+
+            webView.register(methodName: "getVersion") { _ in
+                .string("1.0.0")
             }
-            
+
             #expect(webView.registeredMethods.contains("getVersion"))
         }
     }
-    
+
     @Test("Register method with namespace")
-    func testRegisterMethodWithNamespace() async {
+    func registerMethodWithNamespace() async {
         await MainActor.run {
             let webView = NTLWebView()
             let target = TestTarget(name: "Alice")
-            
+
             webView.register(methodName: "user.getName", target: target) { target, args in
-                return try target.getName(args: args)
+                try target.getName(args: args)
             }
-            
+
             #expect(webView.registeredMethods.contains("user.getName"))
         }
     }
-    
+
     @Test("Unregister method")
-    func testUnregisterMethod() async {
+    func unregisterMethod() async {
         await MainActor.run {
             let webView = NTLWebView()
-            
-            webView.register(methodName: "testMethod") { args in
-                return .string("test")
+
+            webView.register(methodName: "testMethod") { _ in
+                .string("test")
             }
-            
+
             #expect(webView.registeredMethods.contains("testMethod"))
-            
+
             webView.unregister(methodName: "testMethod")
-            
+
             #expect(!webView.registeredMethods.contains("testMethod"))
         }
     }
-    
+
     @Test("Register invalid method name")
-    func testRegisterInvalidMethodName() async {
+    func registerInvalidMethodName() async {
         await MainActor.run {
             let webView = NTLWebView()
             let initialCount = webView.registeredMethods.count
-            
+
             // Empty method name
-            webView.register(methodName: "") { args in
-                return .null
+            webView.register(methodName: "") { _ in
+                .null
             }
-            
+
             // Method name with space
-            webView.register(methodName: "invalid method") { args in
-                return .null
+            webView.register(methodName: "invalid method") { _ in
+                .null
             }
-            
+
             // Method name starting with underscore
-            webView.register(methodName: "_private") { args in
-                return .null
+            webView.register(methodName: "_private") { _ in
+                .null
             }
-            
+
             #expect(webView.registeredMethods.count == initialCount)
         }
     }
-    
+
     @Test("Register invalid method names")
-    func testRegisterInvalidMethodNames() async {
+    func registerInvalidMethodNames() async {
         await MainActor.run {
             let webView = NTLWebView()
             let initialCount = webView.registeredMethods.count
-            
+
             // Empty method name
-            webView.register(methodName: "") { args in
-                return .null
+            webView.register(methodName: "") { _ in
+                .null
             }
-            
+
             // Method name with space
-            webView.register(methodName: "invalid method") { args in
-                return .null
+            webView.register(methodName: "invalid method") { _ in
+                .null
             }
-            
+
             // Method name starting with underscore
-            webView.register(methodName: "_private") { args in
-                return .null
+            webView.register(methodName: "_private") { _ in
+                .null
             }
-            
+
             #expect(webView.registeredMethods.count == initialCount)
         }
     }
-    
+
     // MARK: - Memory Management Tests
-    
+
     @Test("Weak reference handling")
-    func testWeakReferenceHandling() async {
+    func weakReferenceHandling() async {
         await MainActor.run {
             let webView = NTLWebView()
             var target: TestTarget? = TestTarget(name: "Bob")
-            
-            webView.register(methodName: "getTarget", target: target!) { target, args in
-                return .string(target.name)
+
+            webView.register(methodName: "getTarget", target: target!) { target, _ in
+                .string(target.name)
             }
-            
+
             #expect(webView.registeredMethods.contains("getTarget"))
-            
+
             // Release the target
             target = nil
-            
+
             // Force cleanup
             _ = webView.registeredMethods
-            
+
             // The method should still be registered, but the target should be weak
             #expect(webView.registeredMethods.contains("getTarget"))
         }
     }
-    
+
     // MARK: - Internal API Tests
-    
+
     @Test("List methods internal API")
-    func testListMethodsInternalAPI() async {
+    func listMethodsInternalAPI() async {
         await MainActor.run {
             let webView = NTLWebView()
-            
-            webView.register(methodName: "testMethod1") { args in .null }
-            webView.register(methodName: "testMethod2") { args in .null }
-            
+
+            webView.register(methodName: "testMethod1") { _ in .null }
+            webView.register(methodName: "testMethod2") { _ in .null }
+
             let methods = webView.registeredMethods
             #expect(methods.contains("testMethod1"))
             #expect(methods.contains("testMethod2"))
-            
+
             // 检查DSBridge兼容API
             #expect(methods.contains("_dsb.returnValue"))
             #expect(methods.contains("_dsb.dsinit"))
         }
     }
-    
+
     // MARK: - Debug Mode Tests
-    
+
     @Test("Debug mode toggle")
-    func testDebugModeToggle() async {
+    func debugModeToggle() async {
         await MainActor.run {
             let webView = NTLWebView()
-            
+
             #expect(webView.isDebugMode == false)
-            
+
             webView.isDebugMode = true
             #expect(webView.isDebugMode == true)
-            
+
             webView.isDebugMode = false
             #expect(webView.isDebugMode == false)
         }
     }
-    
+
     // MARK: - Configuration Tests
-    
+
     @Test("WebView configuration")
-    func testWebViewConfiguration() async {
+    func webViewConfiguration() async {
         await MainActor.run {
             let configuration = WKWebViewConfiguration()
-            let _ = NTLWebView(frame: .zero, configuration: configuration)
-            
+            _ = NTLWebView(frame: .zero, configuration: configuration)
+
             // Check that script message handler was added
             let handlers = configuration.userContentController.description
             #expect(handlers.contains("_ntl_bridge") || true) // WKUserContentController doesn't expose handlers publicly
-            
+
             // Check that user scripts were added
             #expect(configuration.userContentController.userScripts.count > 0)
         }
     }
-    
+
     // MARK: - Multiple Registration Tests
-    
+
     @Test("Multiple method registration")
-    func testMultipleMethodRegistration() async {
+    func multipleMethodRegistration() async {
         await MainActor.run {
             let webView = NTLWebView()
             let target1 = TestTarget(name: "Target1")
             let target2 = TestTarget(name: "Target2")
-            
-            webView.register(methodName: "method1", target: target1) { target, args in
-                return .string(target.name)
+
+            webView.register(methodName: "method1", target: target1) { target, _ in
+                .string(target.name)
             }
-            
-            webView.register(methodName: "method2", target: target2) { target, args in
-                return .string(target.name)
+
+            webView.register(methodName: "method2", target: target2) { target, _ in
+                .string(target.name)
             }
-            
-            webView.register(methodName: "staticMethod") { args in
-                return .string("static")
+
+            webView.register(methodName: "staticMethod") { _ in
+                .string("static")
             }
-            
+
             let methods = webView.registeredMethods
             #expect(methods.contains("method1"))
             #expect(methods.contains("method2"))
@@ -262,48 +264,48 @@ struct NTLWebViewTests {
             #expect(methods.count >= 5) // 3 registered + 2 internal methods
         }
     }
-    
+
     @Test("Method overriding")
-    func testMethodOverriding() async {
+    func methodOverriding() async {
         await MainActor.run {
             let webView = NTLWebView()
-            
+
             // Register initial method
-            webView.register(methodName: "test") { args in
-                return .string("first")
+            webView.register(methodName: "test") { _ in
+                .string("first")
             }
-            
+
             #expect(webView.registeredMethods.contains("test"))
-            
+
             // Override with new method
-            webView.register(methodName: "test") { args in
-                return .string("second")
+            webView.register(methodName: "test") { _ in
+                .string("second")
             }
-            
+
             #expect(webView.registeredMethods.contains("test"))
             #expect(webView.registeredMethods.filter { $0 == "test" }.count == 1)
         }
     }
-    
+
     // MARK: - Namespace Tests
-    
+
     @Test("Namespace isolation")
-    func testNamespaceIsolation() async {
+    func namespaceIsolation() async {
         await MainActor.run {
             let webView = NTLWebView()
-            
-            webView.register(methodName: "getName") { args in
-                return .string("global")
+
+            webView.register(methodName: "getName") { _ in
+                .string("global")
             }
-            
-            webView.register(methodName: "user.getName") { args in
-                return .string("user")
+
+            webView.register(methodName: "user.getName") { _ in
+                .string("user")
             }
-            
-            webView.register(methodName: "admin.getName") { args in
-                return .string("admin")
+
+            webView.register(methodName: "admin.getName") { _ in
+                .string("admin")
             }
-            
+
             let methods = webView.registeredMethods
             #expect(methods.contains("getName"))
             #expect(methods.contains("user.getName"))
@@ -311,47 +313,113 @@ struct NTLWebViewTests {
             #expect(methods.filter { $0.contains("getName") }.count == 3)
         }
     }
-    
+
     // MARK: - Edge Cases
-    
+
     @Test("Register same method multiple targets")
-    func testRegisterSameMethodMultipleTargets() async {
+    func registerSameMethodMultipleTargets() async {
         await MainActor.run {
             let webView = NTLWebView()
             let target1 = TestTarget(name: "First")
             let target2 = TestTarget(name: "Second")
-            
+
             // Register with first target
-            webView.register(methodName: "getName", target: target1) { target, args in
-                return .string(target.name)
+            webView.register(methodName: "getName", target: target1) { target, _ in
+                .string(target.name)
             }
-            
+
             // Override with second target
-            webView.register(methodName: "getName", target: target2) { target, args in
-                return .string(target.name)
+            webView.register(methodName: "getName", target: target2) { target, _ in
+                .string(target.name)
             }
-            
+
             #expect(webView.registeredMethods.contains("getName"))
             #expect(webView.registeredMethods.filter { $0 == "getName" }.count == 1)
         }
     }
-    
+
     @Test("Method name with special characters")
-    func testMethodNameWithSpecialCharacters() async {
+    func methodNameWithSpecialCharacters() async {
         await MainActor.run {
             let webView = NTLWebView()
-            
+
             // Valid special characters
-            webView.register(methodName: "test.method") { args in .null }
-            webView.register(methodName: "test-method") { args in .null }
-            webView.register(methodName: "test_method") { args in .null }
-            webView.register(methodName: "testMethod123") { args in .null }
-            
+            webView.register(methodName: "test.method") { _ in .null }
+            webView.register(methodName: "test-method") { _ in .null }
+            webView.register(methodName: "test_method") { _ in .null }
+            webView.register(methodName: "testMethod123") { _ in .null }
+
             let methods = webView.registeredMethods
             #expect(methods.contains("test.method"))
             #expect(methods.contains("test-method"))
             #expect(methods.contains("test_method"))
             #expect(methods.contains("testMethod123"))
+        }
+    }
+
+    // MARK: - Navigation Tests
+
+    @Test("Load request triggers cleanup")
+    func loadRequestTriggersCleanup() async {
+        _ = await MainActor.run {
+            let webView = NTLWebView()
+
+            // Register some test JS methods
+            webView.register(methodName: "test.cleanupMethod") { _ in
+                "test response"
+            }
+
+            webView.registerAsync(methodName: "test.asyncCleanupMethod") { _, completion in
+                completion(.success("async response"))
+            }
+
+            // Make some JS calls that will be pending when navigation occurs
+            var syncCallCompleted = false
+            var syncCallError: Error?
+
+            webView.callBridge(method: "test.cleanupMethod", args: []) { result in
+                switch result {
+                case .success:
+                    syncCallCompleted = true
+                case .failure(let error):
+                    syncCallError = error
+                }
+            }
+
+            var asyncCallCompleted = false
+            var asyncCallError: Error?
+
+            webView.callBridge(method: "test.asyncCleanupMethod", args: []) { result in
+                switch result {
+                case .success:
+                    asyncCallCompleted = true
+                case .failure(let error):
+                    asyncCallError = error
+                }
+            }
+
+            // Verify calls are pending (should not be completed yet since bridge not initialized)
+            #expect(!syncCallCompleted)
+            #expect(syncCallError == nil)
+            #expect(!asyncCallCompleted)
+            #expect(asyncCallError == nil)
+
+            webView.webView(webView, didStartProvisionalNavigation: nil)
+
+            // Verify that pending callbacks were cleaned up (should have errors now)
+            #expect(syncCallError != nil)
+            #expect(asyncCallError != nil)
+
+            // Verify the error is the expected navigation cancellation error
+            if let syncError = syncCallError as? NSError {
+                #expect(syncError.domain == "NTLBridge")
+                #expect(syncError.code == -2)
+            }
+
+            if let asyncError = asyncCallError as? NSError {
+                #expect(asyncError.domain == "NTLBridge")
+                #expect(asyncError.code == -2)
+            }
         }
     }
 }
