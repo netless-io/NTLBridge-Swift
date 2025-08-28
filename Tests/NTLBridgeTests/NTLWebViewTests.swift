@@ -357,6 +357,173 @@ struct NTLWebViewTests {
         }
     }
 
+    // MARK: - Generic Call Bridge Tests
+
+    @Test("Generic call bridge with string return")
+    func genericCallBridgeWithStringReturn() async {
+        await MainActor.run {
+            let webView = NTLWebView()
+
+            var result: String?
+            var error: Error?
+
+            webView.callBridge(method: "testStringMethod", args: []) { (response: Result<String, Error>) in
+                switch response {
+                case .success(let value):
+                    result = value
+                case .failure(let err):
+                    error = err
+                }
+            }
+
+            // Simulate a successful JS return by directly calling handleReturnValueFromJS
+            let mockResponse: JSONValue = .dictionary([
+                "id": .number(1),
+                "data": .string("Hello from JavaScript!"),
+                "complete": .bool(true)
+            ])
+            webView.handleReturnValueFromJS(mockResponse)
+
+            // Verify the successful type conversion
+            #expect(result == "Hello from JavaScript!")
+            #expect(error == nil)
+        }
+    }
+
+    @Test("Generic call bridge with custom struct")
+    func genericCallBridgeWithCustomStruct() async {
+        await MainActor.run {
+            let webView = NTLWebView()
+
+            struct TestUser: Codable, Equatable {
+                let name: String
+                let age: Int
+            }
+
+            var result: TestUser?
+            var error: Error?
+
+            webView.callBridge(method: "testUserMethod", args: []) { (response: Result<TestUser, Error>) in
+                switch response {
+                case .success(let value):
+                    result = value
+                case .failure(let err):
+                    error = err
+                }
+            }
+
+            // Simulate a successful JS return with user data
+            let mockResponse: JSONValue = .dictionary([
+                "id": .number(1),
+                "data": .dictionary([
+                    "name": .string("Alice Johnson"),
+                    "age": .number(28)
+                ]),
+                "complete": .bool(true)
+            ])
+            webView.handleReturnValueFromJS(mockResponse)
+
+            // Verify the successful type conversion
+            let expectedUser = TestUser(name: "Alice Johnson", age: 28)
+            #expect(result == expectedUser)
+            #expect(error == nil)
+        }
+    }
+
+    @Test("Generic call bridge with array return")
+    func genericCallBridgeWithArrayReturn() async {
+        await MainActor.run {
+            let webView = NTLWebView()
+
+            struct TestItem: Codable, Equatable {
+                let id: Int
+                let title: String
+            }
+
+            var result: [TestItem]?
+            var error: Error?
+
+            webView.callBridge(method: "testArrayMethod", args: []) { (response: Result<[TestItem], Error>) in
+                switch response {
+                case .success(let value):
+                    result = value
+                case .failure(let err):
+                    error = err
+                }
+            }
+
+            // Simulate a successful JS return with array data
+            let mockResponse: JSONValue = .dictionary([
+                "id": .number(1),
+                "data": .array([
+                    .dictionary(["id": .number(1), "title": .string("First Item")]),
+                    .dictionary(["id": .number(2), "title": .string("Second Item")]),
+                    .dictionary(["id": .number(3), "title": .string("Third Item")])
+                ]),
+                "complete": .bool(true)
+            ])
+            webView.handleReturnValueFromJS(mockResponse)
+
+            // Verify the successful type conversion
+            let expectedItems = [
+                TestItem(id: 1, title: "First Item"),
+                TestItem(id: 2, title: "Second Item"),
+                TestItem(id: 3, title: "Third Item")
+            ]
+            #expect(result == expectedItems)
+            #expect(error == nil)
+        }
+    }
+
+    @Test("Generic call bridge with type conversion failure")
+    func genericCallBridgeWithTypeConversionFailure() async {
+        await MainActor.run {
+            let webView = NTLWebView()
+
+            struct StrictUser: Codable, Equatable {
+                let name: String
+                let age: Int
+                let email: String  // Required field
+            }
+
+            var result: StrictUser?
+            var error: Error?
+
+            webView.callBridge(method: "testIncompleteUserMethod", args: []) { (response: Result<StrictUser, Error>) in
+                switch response {
+                case .success(let value):
+                    result = value
+                case .failure(let err):
+                    error = err
+                }
+            }
+
+            // Simulate JS return with incomplete data (missing required 'email' field)
+            let mockResponse: JSONValue = .dictionary([
+                "id": .number(1),
+                "data": .dictionary([
+                    "name": .string("Bob Smith"),
+                    "age": .number(35)
+                    // Missing 'email' field which is required
+                ]),
+                "complete": .bool(true)
+            ])
+            webView.handleReturnValueFromJS(mockResponse)
+
+            // Verify the type conversion failed as expected
+            #expect(result == nil)
+            #expect(error != nil)
+            
+            // Verify it's a type conversion error
+            #expect(error is NTLBridgeError)
+            if case .typeConversionFailed = error as? NTLBridgeError {
+                // Expected error type
+            } else {
+                #expect(false)  // Unexpected error type
+            }
+        }
+    }
+
     // MARK: - Navigation Tests
 
     @Test("Load request triggers cleanup")

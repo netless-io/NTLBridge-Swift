@@ -1,5 +1,20 @@
 import Foundation
 
+/// Bridge错误类型
+public enum NTLBridgeError: Error, LocalizedError {
+    case invalidValue
+    case typeConversionFailed(Error)
+    
+    public var errorDescription: String? {
+        switch self {
+        case .invalidValue:
+            return "Invalid value for conversion"
+        case .typeConversionFailed(let error):
+            return "Type conversion failed: \(error.localizedDescription)"
+        }
+    }
+}
+
 /// Bridge工具类，提供JSON序列化/反序列化功能
 public final class NTLBridgeUtil {
     
@@ -103,6 +118,37 @@ public final class NTLBridgeUtil {
             return String(data: data, encoding: .utf8)
         } catch {
             return nil
+        }
+    }
+    
+    // MARK: - Type Conversion
+    
+    /// 将JSONValue转换为指定类型
+    /// - Parameter value: 要转换的JSONValue
+    /// - Returns: 转换后的指定类型，转换失败返回nil
+    public static func convertValue<T: Decodable>(_ value: JSONValue?) -> T? {
+        guard let value = value else { return nil }
+        
+        do {
+            let data = try encoder.encode(value)
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            return nil
+        }
+    }
+    
+    /// 将JSONValue转换为指定类型，抛出错误
+    /// - Parameter value: 要转换的JSONValue
+    /// - Returns: 转换后的指定类型
+    /// - Throws: 类型转换错误
+    public static func convertValueOrThrow<T: Decodable>(_ value: JSONValue?) throws -> T {
+        guard let value = value else { throw NTLBridgeError.invalidValue }
+        
+        do {
+            let data = try encoder.encode(value)
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            throw NTLBridgeError.typeConversionFailed(error)
         }
     }
     

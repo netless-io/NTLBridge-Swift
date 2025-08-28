@@ -288,6 +288,33 @@ open class NTLWebView: WKWebView {
         }
     }
     
+    /// 调用 js bridge 方法并返回指定类型
+    /// - Parameters:
+    ///   - method: JavaScript注册方法名，比如 "nameA.funcB"
+    ///   - args: 参数数组
+    ///   - completion: 完成回调，返回指定类型的结果
+    ///   - discussion: js 端目前 async 只用 callback 来注册回调。参数长度要固定。不支持 Promise。
+    public func callBridge<T: Decodable>(
+        method: String,
+        args: [JSONValue] = [],
+        completion: @escaping (Result<T, Error>) -> Void
+    ) {
+        // 调用原来的函数，在回调中进行类型转换
+        callBridge(method: method, args: args) { result in
+            switch result {
+            case .success(let jsonValue):
+                do {
+                    let typedValue: T = try NTLBridgeUtil.convertValueOrThrow(jsonValue)
+                    completion(.success(typedValue))
+                } catch {
+                    completion(.failure(error))
+                }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+    
     // MARK: - Private Methods
     
     /// 内部使用的注册方法，跳过验证
