@@ -800,7 +800,14 @@ struct NTLCallInfoTests {
         let jsonValue = try JSONValue(codable: user)
         let indirectCallInfo = try NTLCallInfo(method: "test", callbackId: 1, jsonData: jsonValue)
         
-        #expect(directCallInfo.data == indirectCallInfo.data)
+        // Parse both JSON strings and compare the objects instead of string comparison
+        // to handle dictionary ordering differences
+        let directData = try JSONSerialization.jsonObject(with: directCallInfo.data.data(using: .utf8)!, options: []) as? [String: Any]
+        let indirectData = try JSONSerialization.jsonObject(with: indirectCallInfo.data.data(using: .utf8)!, options: []) as? [String: Any]
+        
+        // Compare individual values to handle Any type
+        #expect(directData?["id"] as? Int == indirectData?["id"] as? Int)
+        #expect(directData?["name"] as? String == indirectData?["name"] as? String)
     }
     
     @Test("Complex real-world Codable structure")
