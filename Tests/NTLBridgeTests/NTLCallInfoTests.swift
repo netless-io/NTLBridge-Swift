@@ -227,6 +227,325 @@ struct NTLCallInfoTests {
         #expect(callInfo.data == "42")
     }
     
+    // MARK: - JSONValue Literal Tests
+    
+    @Test("String literal with encodeCallInfo")
+    func testStringLiteralWithEncodeCallInfo() throws {
+        let stringValue: JSONValue = "Hello, World!"
+        let callInfo = try NTLCallInfo(method: "testString", callbackId: 1, jsonData: stringValue)
+        
+        #expect(callInfo.method == "testString")
+        #expect(callInfo.callbackId == 1)
+        #expect(callInfo.data == "\"Hello, World!\"")
+        
+        // Verify round-trip
+        let parsedData = try JSONSerialization.jsonObject(with: callInfo.data.data(using: .utf8)!, options: [.fragmentsAllowed])
+        #expect(parsedData as? String == "Hello, World!")
+    }
+    
+    @Test("Integer literal with encodeCallInfo")
+    func testIntegerLiteralWithEncodeCallInfo() throws {
+        let intValue: JSONValue = 42
+        let callInfo = try NTLCallInfo(method: "testInteger", callbackId: 2, jsonData: intValue)
+        
+        #expect(callInfo.method == "testInteger")
+        #expect(callInfo.callbackId == 2)
+        #expect(callInfo.data == "42")
+        
+        // Verify round-trip
+        let parsedData = try JSONSerialization.jsonObject(with: callInfo.data.data(using: .utf8)!, options: [.fragmentsAllowed])
+        #expect(parsedData as? Double == 42)
+    }
+    
+    @Test("Float literal with encodeCallInfo")
+    func testFloatLiteralWithEncodeCallInfo() throws {
+        let floatValue: JSONValue = 3.14159
+        let callInfo = try NTLCallInfo(method: "testFloat", callbackId: 3, jsonData: floatValue)
+        
+        #expect(callInfo.method == "testFloat")
+        #expect(callInfo.callbackId == 3)
+        #expect(callInfo.data == "3.14159")
+        
+        // Verify round-trip
+        let parsedData = try JSONSerialization.jsonObject(with: callInfo.data.data(using: .utf8)!, options: [.fragmentsAllowed])
+        #expect(parsedData as? Double == 3.14159)
+    }
+    
+    @Test("Boolean literal with encodeCallInfo")
+    func testBooleanLiteralWithEncodeCallInfo() throws {
+        let trueValue: JSONValue = true
+        let falseValue: JSONValue = false
+        
+        let trueCallInfo = try NTLCallInfo(method: "testTrue", callbackId: 4, jsonData: trueValue)
+        let falseCallInfo = try NTLCallInfo(method: "testFalse", callbackId: 5, jsonData: falseValue)
+        
+        #expect(trueCallInfo.method == "testTrue")
+        #expect(trueCallInfo.callbackId == 4)
+        #expect(trueCallInfo.data == "true")
+        
+        #expect(falseCallInfo.method == "testFalse")
+        #expect(falseCallInfo.callbackId == 5)
+        #expect(falseCallInfo.data == "false")
+        
+        // Verify round-trip
+        let trueParsed = try JSONSerialization.jsonObject(with: trueCallInfo.data.data(using: .utf8)!, options: [.fragmentsAllowed])
+        let falseParsed = try JSONSerialization.jsonObject(with: falseCallInfo.data.data(using: .utf8)!, options: [.fragmentsAllowed])
+        #expect(trueParsed as? Bool == true)
+        #expect(falseParsed as? Bool == false)
+    }
+    
+    @Test("Nil literal with encodeCallInfo")
+    func testNilLiteralWithEncodeCallInfo() throws {
+        let nullValue: JSONValue = nil
+        let callInfo = try NTLCallInfo(method: "testNil", callbackId: 6, jsonData: nullValue)
+        
+        #expect(callInfo.method == "testNil")
+        #expect(callInfo.callbackId == 6)
+        #expect(callInfo.data == "null")
+        
+        // Verify round-trip
+        let parsedData = try JSONSerialization.jsonObject(with: callInfo.data.data(using: .utf8)!, options: [.fragmentsAllowed])
+        #expect(parsedData is NSNull)
+    }
+    
+    @Test("Array literal with encodeCallInfo")
+    func testArrayLiteralWithEncodeCallInfo() throws {
+        let arrayValue: JSONValue = ["hello", 42, true, nil]
+        let callInfo = try NTLCallInfo(method: "testArray", callbackId: 7, jsonData: arrayValue)
+        
+        #expect(callInfo.method == "testArray")
+        #expect(callInfo.callbackId == 7)
+        
+        // Verify round-trip
+        let parsedData = try JSONSerialization.jsonObject(with: callInfo.data.data(using: .utf8)!, options: [.fragmentsAllowed])
+        let array = parsedData as? [Any]
+        
+        #expect(array?.count == 4)
+        #expect(array?[0] as? String == "hello")
+        #expect(array?[1] as? Double == 42)
+        #expect(array?[2] as? Bool == true)
+        #expect(array?[3] is NSNull)
+    }
+    
+    @Test("Dictionary literal with encodeCallInfo")
+    func testDictionaryLiteralWithEncodeCallInfo() throws {
+        let dictValue: JSONValue = [
+            "name": "Alice",
+            "age": 30,
+            "active": true,
+            "score": 95.5,
+            "tags": ["swift", "ios"],
+            "metadata": nil
+        ]
+        
+        let callInfo = try NTLCallInfo(method: "testDictionary", callbackId: 8, jsonData: dictValue)
+        
+        #expect(callInfo.method == "testDictionary")
+        #expect(callInfo.callbackId == 8)
+        
+        // Verify round-trip
+        let parsedData = try JSONSerialization.jsonObject(with: callInfo.data.data(using: .utf8)!, options: [.fragmentsAllowed])
+        let dict = parsedData as? [String: Any]
+        
+        #expect(dict?["name"] as? String == "Alice")
+        #expect(dict?["age"] as? Double == 30)
+        #expect(dict?["active"] as? Bool == true)
+        #expect(dict?["score"] as? Double == 95.5)
+        #expect((dict?["tags"] as? [Any])?[0] as? String == "swift")
+        #expect(dict?["metadata"] is NSNull)
+    }
+    
+    @Test("Nested structure with literals")
+    func testNestedStructureWithLiterals() throws {
+        let nestedValue: JSONValue = [
+            "user": [
+                "id": 123,
+                "profile": [
+                    "name": "Bob",
+                    "preferences": ["theme": "dark", "notifications": true]
+                ]
+            ],
+            "items": ["item1", "item2", nil],
+            "stats": ["count": 2, "ratio": 0.85]
+        ]
+        
+        let callInfo = try NTLCallInfo(method: "testNested", callbackId: 9, jsonData: nestedValue)
+        
+        #expect(callInfo.method == "testNested")
+        #expect(callInfo.callbackId == 9)
+        
+        // Verify complex nested structure
+        let parsedData = try JSONSerialization.jsonObject(with: callInfo.data.data(using: .utf8)!, options: [.fragmentsAllowed])
+        let dict = parsedData as? [String: Any]
+        
+        #expect(dict != nil)
+        let user = dict?["user"] as? [String: Any]
+        #expect(user != nil)
+        let profile = user?["profile"] as? [String: Any]
+        #expect(profile?["name"] as? String == "Bob")
+        
+        let preferences = profile?["preferences"] as? [String: Any]
+        #expect(preferences?["theme"] as? String == "dark")
+        #expect(preferences?["notifications"] as? Bool == true)
+        
+        let items = dict?["items"] as? [Any]
+        #expect(items?.count == 3)
+        #expect(items?[0] as? String == "item1")
+        #expect(items?[2] is NSNull)
+        
+        let stats = dict?["stats"] as? [String: Any]
+        #expect(stats?["count"] as? Double == 2)
+        #expect(stats?["ratio"] as? Double == 0.85)
+    }
+    
+    @Test("Mixed literal types in complex structure")
+    func testMixedLiteralTypesInComplexStructure() throws {
+        let complexValue: JSONValue = [
+            "booleanFlag": true,
+            "integerCount": 100,
+            "floatPrice": 19.99,
+            "stringName": "Product",
+            "nullValue": nil,
+            "arrayItems": [1, 2.5, "three", false, nil],
+            "nestedDict": ["key": "value", "number": 42]
+        ]
+        
+        let callInfo = try NTLCallInfo(method: "testMixed", callbackId: 10, jsonData: complexValue)
+        
+        #expect(callInfo.method == "testMixed")
+        #expect(callInfo.callbackId == 10)
+        
+        // Verify all types are preserved
+        let parsedData = try JSONSerialization.jsonObject(with: callInfo.data.data(using: .utf8)!, options: [.fragmentsAllowed])
+        let dict = parsedData as? [String: Any]
+        
+        #expect(dict?["booleanFlag"] as? Bool == true)
+        #expect(dict?["integerCount"] as? Double == 100)
+        #expect(dict?["floatPrice"] as? Double == 19.99)
+        #expect(dict?["stringName"] as? String == "Product")
+        #expect(dict?["nullValue"] is NSNull)
+        
+        let arrayItems = dict?["arrayItems"] as? [Any]
+        #expect(arrayItems?.count == 5)
+        #expect(arrayItems?[0] as? Double == 1)
+        #expect(arrayItems?[1] as? Double == 2.5)
+        #expect(arrayItems?[2] as? String == "three")
+        #expect(arrayItems?[3] as? Bool == false)
+        #expect(arrayItems?[4] is NSNull)
+        
+        let nestedDict = dict?["nestedDict"] as? [String: Any]
+        #expect(nestedDict?["key"] as? String == "value")
+        #expect(nestedDict?["number"] as? Double == 42)
+    }
+    
+    @Test("Literal encoding consistency")
+    func testLiteralEncodingConsistency() throws {
+        // Test that literals encode the same as their explicit counterparts
+        let literalString: JSONValue = "test"
+        let explicitString = JSONValue.string("test")
+        
+        let literalCallInfo = try NTLCallInfo(method: "test", callbackId: 1, jsonData: literalString)
+        let explicitCallInfo = try NTLCallInfo(method: "test", callbackId: 1, jsonData: explicitString)
+        
+        #expect(literalCallInfo.data == explicitCallInfo.data)
+        
+        // Test with numbers
+        let literalNumber: JSONValue = 42
+        let explicitNumber = JSONValue.number(42)
+        
+        let literalNumberCallInfo = try NTLCallInfo(method: "test", callbackId: 2, jsonData: literalNumber)
+        let explicitNumberCallInfo = try NTLCallInfo(method: "test", callbackId: 2, jsonData: explicitNumber)
+        
+        #expect(literalNumberCallInfo.data == explicitNumberCallInfo.data)
+        
+        // Test with arrays
+        let literalArray: JSONValue = [1, 2, 3]
+        let explicitArray = JSONValue.array([.number(1), .number(2), .number(3)])
+        
+        let literalArrayCallInfo = try NTLCallInfo(method: "test", callbackId: 3, jsonData: literalArray)
+        let explicitArrayCallInfo = try NTLCallInfo(method: "test", callbackId: 3, jsonData: explicitArray)
+        
+        #expect(literalArrayCallInfo.data == explicitArrayCallInfo.data)
+    }
+    
+    // MARK: - Edge Cases
+    
+    @Test("Special characters in string literal")
+    func testSpecialCharactersInStringLiteral() throws {
+        let specialString: JSONValue = "Hello\nWorld\t\"Escaped\"\\Special"
+        let callInfo = try NTLCallInfo(method: "testSpecial", callbackId: 11, jsonData: specialString)
+        
+        #expect(callInfo.method == "testSpecial")
+        #expect(callInfo.callbackId == 11)
+        
+        // Verify special characters are properly escaped
+        let parsedData = try JSONSerialization.jsonObject(with: callInfo.data.data(using: .utf8)!, options: [.fragmentsAllowed])
+        #expect(parsedData as? String == "Hello\nWorld\t\"Escaped\"\\Special")
+    }
+    
+    @Test("Unicode characters in string literal")
+    func testUnicodeCharactersInStringLiteral() throws {
+        let unicodeString: JSONValue = "Hello 世界 🌍"
+        let callInfo = try NTLCallInfo(method: "testUnicode", callbackId: 12, jsonData: unicodeString)
+        
+        #expect(callInfo.method == "testUnicode")
+        #expect(callInfo.callbackId == 12)
+        
+        // Verify Unicode characters are preserved
+        let parsedData = try JSONSerialization.jsonObject(with: callInfo.data.data(using: .utf8)!, options: [.fragmentsAllowed])
+        #expect(parsedData as? String == "Hello 世界 🌍")
+    }
+    
+    @Test("Empty array literal")
+    func testEmptyArrayLiteral() throws {
+        let emptyArray: JSONValue = []
+        let callInfo = try NTLCallInfo(method: "testEmptyArray", callbackId: 13, jsonData: emptyArray)
+        
+        #expect(callInfo.method == "testEmptyArray")
+        #expect(callInfo.callbackId == 13)
+        #expect(callInfo.data == "[]")
+        
+        // Verify empty array
+        let parsedData = try JSONSerialization.jsonObject(with: callInfo.data.data(using: .utf8)!, options: [.fragmentsAllowed])
+        let array = parsedData as? [Any]
+        #expect(array?.count == 0)
+    }
+    
+    @Test("Empty dictionary literal")
+    func testEmptyDictionaryLiteral() throws {
+        let emptyDict: JSONValue = [:]
+        let callInfo = try NTLCallInfo(method: "testEmptyDict", callbackId: 14, jsonData: emptyDict)
+        
+        #expect(callInfo.method == "testEmptyDict")
+        #expect(callInfo.callbackId == 14)
+        #expect(callInfo.data == "{}")
+        
+        // Verify empty dictionary
+        let parsedData = try JSONSerialization.jsonObject(with: callInfo.data.data(using: .utf8)!, options: [.fragmentsAllowed])
+        let dict = parsedData as? [String: Any]
+        #expect(dict?.count == 0)
+    }
+    
+    @Test("Extreme numeric literals")
+    func testExtremeNumericLiterals() throws {
+        let veryLargeNumber: JSONValue = 999999999999999999.999999
+        let verySmallNumber: JSONValue = 0.0000000000000001
+        let negativeNumber: JSONValue = -123456789.987654321
+        
+        let largeCallInfo = try NTLCallInfo(method: "testLarge", callbackId: 15, jsonData: veryLargeNumber)
+        let smallCallInfo = try NTLCallInfo(method: "testSmall", callbackId: 16, jsonData: verySmallNumber)
+        let negativeCallInfo = try NTLCallInfo(method: "testNegative", callbackId: 17, jsonData: negativeNumber)
+        
+        // Verify extreme numbers are preserved
+        let largeParsed = try JSONSerialization.jsonObject(with: largeCallInfo.data.data(using: .utf8)!, options: [.fragmentsAllowed])
+        let smallParsed = try JSONSerialization.jsonObject(with: smallCallInfo.data.data(using: .utf8)!, options: [.fragmentsAllowed])
+        let negativeParsed = try JSONSerialization.jsonObject(with: negativeCallInfo.data.data(using: .utf8)!, options: [.fragmentsAllowed])
+        
+        #expect(largeParsed as? Double == 999999999999999999.999999)
+        #expect(smallParsed as? Double == 0.0000000000000001)
+        #expect(negativeParsed as? Double == -123456789.987654321)
+    }
+    
     @Test("Special characters in method name")
     func testSpecialCharactersInMethodName() throws {
         let methodName = "test.method_with-special&characters"
