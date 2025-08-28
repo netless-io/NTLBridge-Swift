@@ -61,6 +61,6 @@ if [ $? -ne 0 ]; then
 fi
 
 # Create and push tag
-echo "🏷️ Creating git tag v$VERSION..."
-git tag "v$VERSION"
-git push origin "v$VERSION"
+echo "🏷️ Creating git tag $VERSION..."
+git tag "$VERSION"
+git push origin "$VERSION"
