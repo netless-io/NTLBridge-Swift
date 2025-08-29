@@ -367,7 +367,7 @@ struct NTLWebViewTests {
             var result: String?
             var error: Error?
 
-            webView.callBridge(method: "testStringMethod", args: []) { (response: Result<String, Error>) in
+            webView.callBridge(method: "testStringMethod", args: [String]()) { (response: Result<String, Error>) in
                 switch response {
                 case .success(let value):
                     result = value
@@ -403,7 +403,7 @@ struct NTLWebViewTests {
             var result: TestUser?
             var error: Error?
 
-            webView.callBridge(method: "testUserMethod", args: []) { (response: Result<TestUser, Error>) in
+            webView.callBridge(method: "testUserMethod", args: [String]()) { (response: Result<TestUser, Error>) in
                 switch response {
                 case .success(let value):
                     result = value
@@ -443,7 +443,7 @@ struct NTLWebViewTests {
             var result: [TestItem]?
             var error: Error?
 
-            webView.callBridge(method: "testArrayMethod", args: []) { (response: Result<[TestItem], Error>) in
+            webView.callBridge(method: "testArrayMethod", args: [String]()) { (response: Result<[TestItem], Error>) in
                 switch response {
                 case .success(let value):
                     result = value
@@ -489,7 +489,7 @@ struct NTLWebViewTests {
             var result: StrictUser?
             var error: Error?
 
-            webView.callBridge(method: "testIncompleteUserMethod", args: []) { (response: Result<StrictUser, Error>) in
+            webView.callBridge(method: "testIncompleteUserMethod", args: [String]()) { (response: Result<StrictUser, Error>) in
                 switch response {
                 case .success(let value):
                     result = value
@@ -519,7 +519,7 @@ struct NTLWebViewTests {
             if case .typeConversionFailed = error as? NTLBridgeError {
                 // Expected error type
             } else {
-                #expect(false)  // Unexpected error type
+                #expect(Bool(false))  // Unexpected error type
             }
         }
     }
@@ -544,7 +544,7 @@ struct NTLWebViewTests {
             var syncCallCompleted = false
             var syncCallError: Error?
 
-            webView.callBridge(method: "test.cleanupMethod", args: []) { result in
+            webView.callBridge(method: "test.cleanupMethod", args: [String]()) { result in
                 switch result {
                 case .success:
                     syncCallCompleted = true
@@ -556,7 +556,7 @@ struct NTLWebViewTests {
             var asyncCallCompleted = false
             var asyncCallError: Error?
 
-            webView.callBridge(method: "test.asyncCleanupMethod", args: []) { result in
+            webView.callBridge(method: "test.asyncCleanupMethod", args: [String]()) { result in
                 switch result {
                 case .success:
                     asyncCallCompleted = true

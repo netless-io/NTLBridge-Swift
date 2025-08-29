@@ -18,22 +18,9 @@ public struct NTLCallInfo: Codable, Equatable {
         self.data = data
     }
     
-    /// 便捷初始化方法，自动序列化JSONValue数据
-    public init(method: String, callbackId: Int, jsonData: JSONValue?) throws {
-        self.method = method
-        self.callbackId = callbackId
-        
-        if let jsonData = jsonData {
-            let encoder = JSONEncoder()
-            let data = try encoder.encode(jsonData)
-            self.data = String(data: data, encoding: .utf8) ?? "{}"
-        } else {
-            self.data = "null"
-        }
-    }
-    
+      
     /// 便捷初始化方法，直接传入Codable类型数据
-    public init<T: Codable>(method: String, callbackId: Int, codableData: T) throws {
+    public init<T: Encodable>(method: String, callbackId: Int, codableData: T) throws {
         self.method = method
         self.callbackId = callbackId
         
@@ -43,7 +30,7 @@ public struct NTLCallInfo: Codable, Equatable {
     }
     
     /// 便捷初始化方法，直接传入可选Codable类型数据
-    public init<T: Codable>(method: String, callbackId: Int, codableData: T?) throws {
+    public init<T: Encodable>(method: String, callbackId: Int, codableData: T?) throws {
         self.method = method
         self.callbackId = callbackId
         

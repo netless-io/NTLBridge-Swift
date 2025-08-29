@@ -254,21 +254,22 @@ open class NTLWebView: WKWebView {
     
     // MARK: - JavaScript Communication
     
-    /// 调用 js bridge 方法
+      
+    /// 调用 js bridge 方法，支持直接传入 Codable 参数数组
     /// - Parameters:
     ///   - method: JavaScript注册方法名，比如 "nameA.funcB"
-    ///   - args: 参数数组
+    ///   - args: Codable 参数数组（会自动编码为 JSONValue 数组）
     ///   - completion: 完成回调
-    ///   - discussion: js 端目前 async 只用 callback 来注册回调。参数长度要固定。不支持 Promise。
-    public func callBridge(
+    ///   - discussion: 便捷方法，自动将 Codable 对象数组转换为 JSONValue 数组
+    public func callBridge<T: Encodable>(
         method: String,
-        args: [JSONValue] = [],
+        args: [T],
         completion: ((Result<JSONValue?, Error>) -> Void)? = nil
     ) {
         let callbackId = generateCallbackId()
         
         do {
-            let callInfo = try NTLCallInfo(method: method, callbackId: callbackId, jsonData: .array(args))
+            let callInfo = try NTLCallInfo(method: method, callbackId: callbackId, codableData: args)
             
             if isInitialized {
                 // 如果已初始化，直接调度
@@ -288,72 +289,19 @@ open class NTLWebView: WKWebView {
         }
     }
     
-    /// 调用 js bridge 方法并返回指定类型
-    /// - Parameters:
-    ///   - method: JavaScript注册方法名，比如 "nameA.funcB"
-    ///   - args: 参数数组
-    ///   - completion: 完成回调，返回指定类型的结果
-    ///   - discussion: js 端目前 async 只用 callback 来注册回调。参数长度要固定。不支持 Promise。
-    public func callBridge<T: Decodable>(
-        method: String,
-        args: [JSONValue] = [],
-        completion: @escaping (Result<T, Error>) -> Void
-    ) {
-        // 调用原来的函数，在回调中进行类型转换
-        callBridge(method: method, args: args) { result in
-            switch result {
-            case .success(let jsonValue):
-                do {
-                    let typedValue: T = try NTLBridgeUtil.convertValueOrThrow(jsonValue)
-                    completion(.success(typedValue))
-                } catch {
-                    completion(.failure(error))
-                }
-            case .failure(let error):
-                completion(.failure(error))
-            }
-        }
-    }
-    
-    /// 调用 js bridge 方法，支持直接传入 Codable 参数数组
-    /// - Parameters:
-    ///   - method: JavaScript注册方法名，比如 "nameA.funcB"
-    ///   - args: Codable 参数数组（会自动编码为 JSONValue 数组）
-    ///   - completion: 完成回调
-    ///   - discussion: 便捷方法，自动将 Codable 对象数组转换为 JSONValue 数组
-    public func callBridge<T: Encodable>(
-        method: String,
-        args: [T],
-        completion: ((Result<JSONValue?, Error>) -> Void)? = nil
-    ) {
-        do {
-            let jsonArgs: [JSONValue] = try args.map { arg in
-                let jsonData = try JSONEncoder().encode(arg)
-                return try JSONDecoder().decode(JSONValue.self, from: jsonData)
-            }
-            callBridge(method: method, args: jsonArgs, completion: completion)
-        } catch {
-            completion?(.failure(error))
-        }
-    }
-    
     /// 调用 js bridge 方法，支持直接传入 Codable 参数数组并返回指定类型
     /// - Parameters:
     ///   - method: JavaScript注册方法名，比如 "nameA.funcB"
     ///   - args: Codable 参数数组（会自动编码为 JSONValue 数组）
     ///   - completion: 完成回调，返回指定类型的结果
     ///   - discussion: 便捷方法，自动将 Codable 对象数组转换为 JSONValue 数组
-    public func callBridge<T: Encodable, U: Decodable>(
+    public func callTypedBridge<T: Encodable, U: Decodable>(
         method: String,
         args: [T],
         completion: @escaping (Result<U, Error>) -> Void
     ) {
         do {
-            let jsonArgs: [JSONValue] = try args.map { arg in
-                let jsonData = try JSONEncoder().encode(arg)
-                return try JSONDecoder().decode(JSONValue.self, from: jsonData)
-            }
-            callBridge(method: method, args: jsonArgs) { result in
+            callBridge(method: method, args: args) { result in
                 switch result {
                 case .success(let jsonValue):
                     do {
