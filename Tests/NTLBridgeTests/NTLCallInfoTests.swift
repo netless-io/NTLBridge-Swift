@@ -797,7 +797,7 @@ struct NTLCallInfoTests {
         
         // Compare direct Codable encoding vs JSONValue then encoding
         let directCallInfo = try NTLCallInfo(method: "test", callbackId: 1, codableData: user)
-        let jsonValue = try JSONValue(codable: user)
+        let jsonValue = JSONValue(encodable: user)
         let indirectCallInfo = try NTLCallInfo(method: "test", callbackId: 1, jsonData: jsonValue)
         
         // Parse both JSON strings and compare the objects instead of string comparison

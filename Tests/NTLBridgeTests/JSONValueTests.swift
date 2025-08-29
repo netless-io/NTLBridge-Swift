@@ -288,7 +288,7 @@ struct JSONValueTests {
         }
         
         let user = User(id: 1, name: "Alice", isActive: true)
-        let jsonValue = try JSONValue(codable: user)
+        let jsonValue = JSONValue(encodable: user)
         
         #expect(jsonValue.isDictionary == true)
         #expect(jsonValue.dictionaryValue?["id"] == .number(1))
@@ -315,7 +315,7 @@ struct JSONValueTests {
         }
         
         let product = Product(sku: "PRD-001", price: 29.99, inStock: true)
-        let jsonValue = try JSONValue(codable: product)
+        let jsonValue = JSONValue(encodable: product)
         
         #expect(jsonValue.isDictionary == true)
         #expect(jsonValue.dictionaryValue?["sku"] == .string("PRD-001"))
@@ -332,7 +332,7 @@ struct JSONValueTests {
         }
         
         let status = Status.active
-        let jsonValue = try JSONValue(codable: status)
+        let jsonValue = JSONValue(encodable: status)
         
         #expect(jsonValue.isString == true)
         #expect(jsonValue.stringValue == "active")
@@ -346,7 +346,7 @@ struct JSONValueTests {
         }
         
         let items = [Item(name: "Apple", quantity: 5), Item(name: "Banana", quantity: 3)]
-        let jsonValue = try JSONValue(codable: items)
+        let jsonValue = JSONValue(encodable: items)
         
         #expect(jsonValue.isArray == true)
         #expect(jsonValue.arrayValue?.count == 2)
@@ -364,7 +364,7 @@ struct JSONValueTests {
             "license": "MIT"
         ]
         
-        let jsonValue = try JSONValue(codable: metadata)
+        let jsonValue = JSONValue(encodable: metadata)
         
         #expect(jsonValue.isDictionary == true)
         #expect(jsonValue.dictionaryValue?["version"] == .string("1.0.0"))
@@ -394,7 +394,7 @@ struct JSONValueTests {
             hobbies: ["reading", "swimming", "coding"]
         )
         
-        let jsonValue = try JSONValue(codable: person)
+        let jsonValue = JSONValue(encodable: person)
         
         #expect(jsonValue.isDictionary == true)
         #expect(jsonValue.dictionaryValue?["name"] == .string("Bob"))
@@ -422,8 +422,8 @@ struct JSONValueTests {
         let configWithValues = Config(apiKey: "secret-key", debugMode: true)
         let configWithNil = Config(apiKey: nil, debugMode: nil)
         
-        let jsonValue1 = try JSONValue(codable: configWithValues)
-        let jsonValue2 = try JSONValue(codable: configWithNil)
+        let jsonValue1 = JSONValue(encodable: configWithValues)
+        let jsonValue2 = JSONValue(encodable: configWithNil)
         
         #expect(jsonValue1.dictionaryValue?["apiKey"] == .string("secret-key"))
         #expect(jsonValue1.dictionaryValue?["debugMode"] == .bool(true))
@@ -446,7 +446,7 @@ struct JSONValueTests {
         }
         
         let user = User(userId: 123, fullName: "John Doe")
-        let jsonValue = try JSONValue(codable: user)
+        let jsonValue = JSONValue(encodable: user)
         
         #expect(jsonValue.isDictionary == true)
         #expect(jsonValue.dictionaryValue?["user_id"] == .number(123))
@@ -464,7 +464,7 @@ struct JSONValueTests {
         
         let date = Date(timeIntervalSince1970: 1234567890)
         let event = Event(name: "Conference", date: date)
-        let jsonValue = try JSONValue(codable: event)
+        let jsonValue = JSONValue(encodable: event)
         
         #expect(jsonValue.isDictionary == true)
         #expect(jsonValue.dictionaryValue?["name"] == .string("Conference"))
@@ -484,7 +484,7 @@ struct JSONValueTests {
         
         let content = "Hello, World!".data(using: .utf8)!
         let file = File(name: "greeting.txt", content: content)
-        let jsonValue = try JSONValue(codable: file)
+        let jsonValue = JSONValue(encodable: file)
         
         #expect(jsonValue.isDictionary == true)
         #expect(jsonValue.dictionaryValue?["name"] == .string("greeting.txt"))
