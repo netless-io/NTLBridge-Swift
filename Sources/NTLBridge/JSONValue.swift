@@ -111,12 +111,16 @@ public enum JSONValue: Codable, Equatable {
         }
     }
     
-    /// 从Codable类型创建JSONValue
-    public init<T: Codable>(codable value: T) throws {
+    /// 从Encodable类型创建JSONValue
+    public init<T: Encodable>(encodable value: T) {
         let encoder = JSONEncoder()
-        let data = try encoder.encode(value)
+        let data = try? encoder.encode(value)
         let decoder = JSONDecoder()
-        self = try decoder.decode(JSONValue.self, from: data)
+        if let data, let jsonValue = try? decoder.decode(JSONValue.self, from: data) {
+            self = jsonValue
+        } else {
+            self = .null
+        }
     }
     
     // MARK: - Type Checking Properties
