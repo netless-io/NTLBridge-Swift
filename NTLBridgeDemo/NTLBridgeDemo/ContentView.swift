@@ -84,6 +84,17 @@ struct ContentView: View {
             Button("Call js async multiParam") {
                 model.webView.callBridge(method: "asyn.multiParam", args: [.string("BBB"), .dictionary(["ppp": "ttt"])]) { process($0) }
             }
+            
+            // Example of new Codable parameter support
+            Button("Call with Codable params") {
+                struct TestUser: Codable {
+                    let name: String
+                    let age: Int
+                }
+                
+                let user = TestUser(name: "Test User", age: 25)
+                model.webView.callBridge(method: "test.codable", args: [user]) { process($0) }
+            }
         }
         
         WebViewWrapper(webView: model.webView)

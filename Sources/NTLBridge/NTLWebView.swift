@@ -315,6 +315,62 @@ open class NTLWebView: WKWebView {
         }
     }
     
+    /// 调用 js bridge 方法，支持直接传入 Codable 参数数组
+    /// - Parameters:
+    ///   - method: JavaScript注册方法名，比如 "nameA.funcB"
+    ///   - args: Codable 参数数组（会自动编码为 JSONValue 数组）
+    ///   - completion: 完成回调
+    ///   - discussion: 便捷方法，自动将 Codable 对象数组转换为 JSONValue 数组
+    public func callBridge<T: Encodable>(
+        method: String,
+        args: [T],
+        completion: ((Result<JSONValue?, Error>) -> Void)? = nil
+    ) {
+        do {
+            let jsonArgs: [JSONValue] = try args.map { arg in
+                let jsonData = try JSONEncoder().encode(arg)
+                return try JSONDecoder().decode(JSONValue.self, from: jsonData)
+            }
+            callBridge(method: method, args: jsonArgs, completion: completion)
+        } catch {
+            completion?(.failure(error))
+        }
+    }
+    
+    /// 调用 js bridge 方法，支持直接传入 Codable 参数数组并返回指定类型
+    /// - Parameters:
+    ///   - method: JavaScript注册方法名，比如 "nameA.funcB"
+    ///   - args: Codable 参数数组（会自动编码为 JSONValue 数组）
+    ///   - completion: 完成回调，返回指定类型的结果
+    ///   - discussion: 便捷方法，自动将 Codable 对象数组转换为 JSONValue 数组
+    public func callBridge<T: Encodable, U: Decodable>(
+        method: String,
+        args: [T],
+        completion: @escaping (Result<U, Error>) -> Void
+    ) {
+        do {
+            let jsonArgs: [JSONValue] = try args.map { arg in
+                let jsonData = try JSONEncoder().encode(arg)
+                return try JSONDecoder().decode(JSONValue.self, from: jsonData)
+            }
+            callBridge(method: method, args: jsonArgs) { result in
+                switch result {
+                case .success(let jsonValue):
+                    do {
+                        let typedValue: U = try NTLBridgeUtil.convertValueOrThrow(jsonValue)
+                        completion(.success(typedValue))
+                    } catch {
+                        completion(.failure(error))
+                    }
+                case .failure(let error):
+                    completion(.failure(error))
+                }
+            }
+        } catch {
+            completion(.failure(error))
+        }
+    }
+    
     // MARK: - Private Methods
     
     /// 内部使用的注册方法，跳过验证
