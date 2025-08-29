@@ -9,6 +9,7 @@ on:
     branches: [ main, master ]
     paths:
       - 'Sources/**'
+  workflow_dispatch:
 
 jobs:
   test:
