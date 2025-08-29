@@ -266,24 +266,9 @@ open class NTLWebView: WKWebView {
         args: [T],
         completion: ((Result<JSONValue?, Error>) -> Void)? = nil
     ) {
-        let callbackId = generateCallbackId()
-        
         do {
-            let callInfo = try NTLCallInfo(method: method, callbackId: callbackId, codableData: args)
-            
-            if isInitialized {
-                // 如果已初始化，直接调度
-                dispatchJavascriptCall(callInfo)
-            } else {
-                // 如果未初始化，加入启动队列
-                startupCallQueue.append(callInfo)
-                debugLog("Queued call for later dispatch: \(method)")
-            }
-            
-            if let completion = completion {
-                pendingCallbacks[callbackId] = completion
-            }
-            
+            let callInfo = try NTLCallInfo(method: method, callbackId: generateCallbackId(), codableData: args)
+            internalCallBridge(callInfo: callInfo, completion: completion)
         } catch {
             completion?(.failure(error))
         }
@@ -298,7 +283,31 @@ open class NTLWebView: WKWebView {
         method: String,
         completion: ((Result<JSONValue?, Error>) -> Void)? = nil
     ) {
-        callBridge(method: method, args: [String](), completion: completion)
+        do {
+            let callInfo = try NTLCallInfo(method: method, callbackId: generateCallbackId(), codableData: [String]())
+            internalCallBridge(callInfo: callInfo, completion: completion)
+        } catch {
+            completion?(.failure(error))
+        }
+    }
+    
+    /// 调用 js bridge 方法，支持直接传入任意类型参数数组
+    /// - Parameters:
+    ///   - method: JavaScript注册方法名，比如 "nameA.funcB"
+    ///   - args: 任意类型参数数组（会自动转换为JSONValue数组）
+    ///   - completion: 完成回调
+    ///   - discussion: 便捷方法，支持传入[Any]类型的参数数组，自动转换为JSONValue
+    public func callBridge(
+        method: String,
+        args: [Any],
+        completion: ((Result<JSONValue?, Error>) -> Void)? = nil
+    ) {
+        do {
+            let callInfo = try NTLCallInfo(method: method, callbackId: generateCallbackId(), anyArrayData: args)
+            internalCallBridge(callInfo: callInfo, completion: completion)
+        } catch {
+            completion?(.failure(error))
+        }
     }
     
     /// 调用 js bridge 方法，支持直接传入 Codable 参数数组并返回指定类型
@@ -337,6 +346,27 @@ open class NTLWebView: WKWebView {
         completion: @escaping (Result<U, Error>) -> Void
     ) {
         callTypedBridge(method: method, args: [String](), completion: completion)
+    }
+    
+    // MARK: - Internal Call Bridge Method
+    
+    /// 内部统一的调用入口，所有 callBridge 重载方法最终都调用此方法
+    /// - Parameters:
+    ///   - callInfo: 调用信息
+    ///   - completion: 完成回调
+    private func internalCallBridge(callInfo: NTLCallInfo, completion: ((Result<JSONValue?, Error>) -> Void)? = nil) {
+        if isInitialized {
+            // 如果已初始化，直接调度
+            dispatchJavascriptCall(callInfo)
+        } else {
+            // 如果未初始化，加入启动队列
+            startupCallQueue.append(callInfo)
+            debugLog("Queued call for later dispatch: \(callInfo.method)")
+        }
+        
+        if let completion = completion {
+            pendingCallbacks[callInfo.callbackId] = completion
+        }
     }
     
     // MARK: - Private Methods

@@ -236,3 +236,17 @@ extension JSONValue: ExpressibleByNilLiteral {
         self = .null
     }
 }
+
+// MARK: - Dictionary Extensions
+
+extension Dictionary {
+    func compactMapValues<T>(_ transform: (Value) throws -> T?) rethrows -> [Key: T] {
+        var result: [Key: T] = [:]
+        for (key, value) in self {
+            if let transformed = try transform(value) {
+                result[key] = transformed
+            }
+        }
+        return result
+    }
+}

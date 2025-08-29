@@ -17,7 +17,6 @@ public struct NTLCallInfo: Codable, Equatable {
         self.callbackId = callbackId
         self.data = data
     }
-    
       
     /// 便捷初始化方法，直接传入Codable类型数据
     public init<T: Encodable>(method: String, callbackId: Int, codableData: T) throws {
@@ -41,5 +40,16 @@ public struct NTLCallInfo: Codable, Equatable {
         } else {
             self.data = "null"
         }
+    }
+    
+    /// 便捷初始化方法，直接传入任意类型数组数据
+    public init(method: String, callbackId: Int, anyArrayData: [Any]) throws {
+        self.method = method
+        self.callbackId = callbackId
+        
+        let jsonValues = anyArrayData.compactMap { JSONValue(any: $0) }
+        let jsonArray = JSONValue.array(jsonValues)
+        let data = try JSONEncoder().encode(jsonArray)
+        self.data = String(data: data, encoding: .utf8) ?? "[]"
     }
 }
