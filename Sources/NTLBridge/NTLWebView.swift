@@ -289,6 +289,18 @@ open class NTLWebView: WKWebView {
         }
     }
     
+    /// 调用 js bridge 方法（无参数版本）
+    /// - Parameters:
+    ///   - method: JavaScript注册方法名，比如 "nameA.funcB"
+    ///   - completion: 完成回调
+    ///   - discussion: 便捷方法，不需要传入参数数组
+    public func callBridge(
+        method: String,
+        completion: ((Result<JSONValue?, Error>) -> Void)? = nil
+    ) {
+        callBridge(method: method, args: [String](), completion: completion)
+    }
+    
     /// 调用 js bridge 方法，支持直接传入 Codable 参数数组并返回指定类型
     /// - Parameters:
     ///   - method: JavaScript注册方法名，比如 "nameA.funcB"
@@ -300,23 +312,31 @@ open class NTLWebView: WKWebView {
         args: [T],
         completion: @escaping (Result<U, Error>) -> Void
     ) {
-        do {
-            callBridge(method: method, args: args) { result in
-                switch result {
-                case .success(let jsonValue):
-                    do {
-                        let typedValue: U = try NTLBridgeUtil.convertValueOrThrow(jsonValue)
-                        completion(.success(typedValue))
-                    } catch {
-                        completion(.failure(error))
-                    }
-                case .failure(let error):
+        callBridge(method: method, args: args) { result in
+            switch result {
+            case .success(let jsonValue):
+                do {
+                    let typedValue: U = try NTLBridgeUtil.convertValueOrThrow(jsonValue)
+                    completion(.success(typedValue))
+                } catch {
                     completion(.failure(error))
                 }
+            case .failure(let error):
+                completion(.failure(error))
             }
-        } catch {
-            completion(.failure(error))
         }
+    }
+    
+    /// 调用 js bridge 方法并返回指定类型（无参数版本）
+    /// - Parameters:
+    ///   - method: JavaScript注册方法名，比如 "nameA.funcB"
+    ///   - completion: 完成回调，返回指定类型的结果
+    ///   - discussion: 便捷方法，不需要传入参数数组
+    public func callTypedBridge<U: Decodable>(
+        method: String,
+        completion: @escaping (Result<U, Error>) -> Void
+    ) {
+        callTypedBridge(method: method, args: [String](), completion: completion)
     }
     
     // MARK: - Private Methods
