@@ -20,16 +20,23 @@ public final class NTLBridgeUtil {
     
     // MARK: - JSON Encoder/Decoder
     
-    private static let encoder: JSONEncoder = {
+    /// 创建JSONEncoder实例，可被子类重写
+    /// - Returns: 配置好的JSONEncoder实例
+    public static func createEncoder() -> JSONEncoder {
         let encoder = JSONEncoder()
         encoder.outputFormatting = []
         return encoder
-    }()
+    }
     
-    private static let decoder: JSONDecoder = {
+    /// 创建JSONDecoder实例，可被子类重写
+    /// - Returns: 配置好的JSONDecoder实例
+    public static func createDecoder() -> JSONDecoder {
         let decoder = JSONDecoder()
         return decoder
-    }()
+    }
+    
+    private static let encoder = createEncoder()
+    private static let decoder = createDecoder()
     
     // MARK: - JSONValue Conversion
     

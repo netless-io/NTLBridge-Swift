@@ -23,7 +23,7 @@ public struct NTLCallInfo: Codable, Equatable {
         self.method = method
         self.callbackId = callbackId
         
-        let encoder = JSONEncoder()
+        let encoder = NTLBridgeUtil.createEncoder()
         let data = try encoder.encode(codableData)
         self.data = String(data: data, encoding: .utf8) ?? "{}"
     }
@@ -34,7 +34,7 @@ public struct NTLCallInfo: Codable, Equatable {
         self.callbackId = callbackId
         
         if let codableData = codableData {
-            let encoder = JSONEncoder()
+            let encoder = NTLBridgeUtil.createEncoder()
             let data = try encoder.encode(codableData)
             self.data = String(data: data, encoding: .utf8) ?? "{}"
         } else {
@@ -49,7 +49,8 @@ public struct NTLCallInfo: Codable, Equatable {
         
         let jsonValues = anyArrayData.compactMap { JSONValue(any: $0) }
         let jsonArray = JSONValue.array(jsonValues)
-        let data = try JSONEncoder().encode(jsonArray)
+        let encoder = NTLBridgeUtil.createEncoder()
+        let data = try encoder.encode(jsonArray)
         self.data = String(data: data, encoding: .utf8) ?? "[]"
     }
 }

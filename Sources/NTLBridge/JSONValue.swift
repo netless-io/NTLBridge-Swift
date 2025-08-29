@@ -113,9 +113,9 @@ public enum JSONValue: Codable, Equatable {
     
     /// 从Encodable类型创建JSONValue
     public init<T: Encodable>(encodable value: T) {
-        let encoder = JSONEncoder()
+        let encoder = NTLBridgeUtil.createEncoder()
         let data = try? encoder.encode(value)
-        let decoder = JSONDecoder()
+        let decoder = NTLBridgeUtil.createDecoder()
         if let data, let jsonValue = try? decoder.decode(JSONValue.self, from: data) {
             self = jsonValue
         } else {
