@@ -33,13 +33,4 @@ jobs:
           ${{ runner.os }}-spm-
           
     - name: Run tests
-      run: swift test --enable-code-coverage
-      
-    - name: Upload coverage to Codecov
-      if: success()
-      uses: codecov/codecov-action@v3
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: .build/debug/codecov/*.json
-        flags: unittests
-        name: codecov-umbrella
+      run: swift test
