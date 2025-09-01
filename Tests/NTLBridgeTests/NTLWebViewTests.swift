@@ -360,14 +360,14 @@ struct NTLWebViewTests {
     // MARK: - Generic Call Bridge Tests
 
     @Test("Generic call bridge with string return")
-    func genericCallBridgeWithStringReturn() async {
+    func genericcallHandlerWithStringReturn() async {
         await MainActor.run {
             let webView = NTLWebView()
 
             var result: String?
             var error: Error?
 
-            webView.callTypedBridge(method: "testStringMethod") { (response: Result<String, Error>) in
+            webView.callTypedHandler("testStringMethod") { (response: Result<String, Error>) in
                 switch response {
                 case .success(let value):
                     result = value
@@ -391,7 +391,7 @@ struct NTLWebViewTests {
     }
 
     @Test("Generic call bridge with custom struct")
-    func genericCallBridgeWithCustomStruct() async {
+    func genericcallHandlerWithCustomStruct() async {
         await MainActor.run {
             let webView = NTLWebView()
 
@@ -403,7 +403,7 @@ struct NTLWebViewTests {
             var result: TestUser?
             var error: Error?
 
-            webView.callTypedBridge(method: "testUserMethod") { (response: Result<TestUser, Error>) in
+            webView.callTypedHandler("testUserMethod") { (response: Result<TestUser, Error>) in
                 switch response {
                 case .success(let value):
                     result = value
@@ -431,7 +431,7 @@ struct NTLWebViewTests {
     }
 
     @Test("Generic call bridge with array return")
-    func genericCallBridgeWithArrayReturn() async {
+    func genericcallHandlerWithArrayReturn() async {
         await MainActor.run {
             let webView = NTLWebView()
 
@@ -443,7 +443,7 @@ struct NTLWebViewTests {
             var result: [TestItem]?
             var error: Error?
 
-            webView.callTypedBridge(method: "testArrayMethod") { (response: Result<[TestItem], Error>) in
+            webView.callTypedHandler("testArrayMethod") { (response: Result<[TestItem], Error>) in
                 switch response {
                 case .success(let value):
                     result = value
@@ -476,7 +476,7 @@ struct NTLWebViewTests {
     }
 
     @Test("Generic call bridge with type conversion failure")
-    func genericCallBridgeWithTypeConversionFailure() async {
+    func genericcallHandlerWithTypeConversionFailure() async {
         await MainActor.run {
             let webView = NTLWebView()
 
@@ -489,7 +489,7 @@ struct NTLWebViewTests {
             var result: StrictUser?
             var error: Error?
 
-            webView.callTypedBridge(method: "testIncompleteUserMethod") { (response: Result<StrictUser, Error>) in
+            webView.callTypedHandler("testIncompleteUserMethod") { (response: Result<StrictUser, Error>) in
                 switch response {
                 case .success(let value):
                     result = value
@@ -544,7 +544,7 @@ struct NTLWebViewTests {
             var syncCallCompleted = false
             var syncCallError: Error?
 
-            webView.callBridge(method: "test.cleanupMethod", args: [String]()) { result in
+            webView.callHandler("test.cleanupMethod", arguments: [String]()) { result in
                 switch result {
                 case .success:
                     syncCallCompleted = true
@@ -556,7 +556,7 @@ struct NTLWebViewTests {
             var asyncCallCompleted = false
             var asyncCallError: Error?
 
-            webView.callBridge(method: "test.asyncCleanupMethod", args: [String]()) { result in
+            webView.callHandler("test.asyncCleanupMethod", arguments: [String]()) { result in
                 switch result {
                 case .success:
                     asyncCallCompleted = true

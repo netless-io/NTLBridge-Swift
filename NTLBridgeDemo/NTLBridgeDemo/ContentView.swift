@@ -67,22 +67,22 @@ struct ContentView: View {
                 Text(model.jsResult ?? "No result yet")
             }
             Button("Call js sync") {
-                model.webView.callBridge(method: "syn.tag") { process($0) }
+                model.webView.callHandler("syn.tag") { process($0) }
             }
             Button("Call js sync multiparam") {
-                model.webView.callBridge(method: "syn.multi", args: [["1": 111]])  { process($0) }
+                model.webView.callHandler("syn.multi", arguments: [["1": 111]])  { process($0) }
             }
             Button("Call js error") {
-                model.webView.callBridge(method: "syn.error") { process($0) }
+                model.webView.callHandler("syn.error") { process($0) }
             }
             Button("Call js async") {
-                model.webView.callBridge(method: "asyn.tag", args: ["AAA"]) { process($0) }
+                model.webView.callHandler("asyn.tag", arguments: ["AAA"]) { process($0) }
             }
             Button("Call js async error") {
-                model.webView.callBridge(method: "asyn.error", args: ["AAA"]) { process($0) }
+                model.webView.callHandler("asyn.error", arguments: ["AAA"]) { process($0) }
             }
             Button("Call js async multiParam") {
-                model.webView.callBridge(method: "asyn.multiParam", args: ["BBB", ["ppp": "ttt"]]) { process($0) }
+                model.webView.callHandler("asyn.multiParam", arguments: ["BBB", ["ppp": "ttt"]]) { process($0) }
             }
             
             // Example of new Codable parameter support
@@ -93,7 +93,7 @@ struct ContentView: View {
                 }
                 
                 let user = TestUser(name: "Test User", age: 25)
-                model.webView.callBridge(method: "asyn.tag", args: [user]) { process($0) }
+                model.webView.callHandler("asyn.tag", arguments: [user]) { process($0) }
             }
         }
         

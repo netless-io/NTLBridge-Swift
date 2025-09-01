@@ -93,7 +93,7 @@ webView.register(methodName: "calculate") { param in
 
 ```swift
 // 调用 JavaScript 方法
-webView.callBridge(method: "showAlert", args: ["来自 Swift 的问候！"]) { result in
+webView.callHandler("showAlert", arguments: ["来自 Swift 的问候！"]) { result in
     switch result {
     case .success(let value):
         print("JS 响应: \(value ?? .null)")
@@ -103,7 +103,7 @@ webView.callBridge(method: "showAlert", args: ["来自 Swift 的问候！"]) { r
 }
 
 // 使用字面量语法调用
-webView.callBridge(method: "calculate", args: [10, 20, "add"])
+webView.callHandler("calculate", arguments: [10, 20, "add"])
 
 // 支持Codable类型
 struct User: Codable {
@@ -111,7 +111,7 @@ struct User: Codable {
     let name: String
 }
 let user = User(id: "123", name: "张三")
-webView.callBridge(method: "updateUser", args: [user])
+webView.callHandler("updateUser", arguments: [user])
 ```
 
 ## Web 集成

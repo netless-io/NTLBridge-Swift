@@ -258,17 +258,17 @@ open class NTLWebView: WKWebView {
     /// 调用 js bridge 方法，支持直接传入 Codable 参数数组
     /// - Parameters:
     ///   - method: JavaScript注册方法名，比如 "nameA.funcB"
-    ///   - args: Codable 参数数组（会自动编码为 JSONValue 数组）
+    ///   - arguments: Codable 参数数组（会自动编码为 JSONValue 数组）
     ///   - completion: 完成回调
     ///   - discussion: 便捷方法，自动将 Codable 对象数组转换为 JSONValue 数组
-    public func callBridge<T: Encodable>(
-        method: String,
-        args: [T],
+    public func callHandler<T: Encodable>(
+        _ method: String,
+        arguments: [T],
         completion: ((Result<JSONValue?, Error>) -> Void)? = nil
     ) {
         do {
-            let callInfo = try NTLCallInfo(method: method, callbackId: generateCallbackId(), codableData: args)
-            internalCallBridge(callInfo: callInfo, completion: completion)
+            let callInfo = try NTLCallInfo(method: method, callbackId: generateCallbackId(), codableData: arguments)
+            internalcallHandler(callInfo: callInfo, completion: completion)
         } catch {
             completion?(.failure(error))
         }
@@ -279,13 +279,13 @@ open class NTLWebView: WKWebView {
     ///   - method: JavaScript注册方法名，比如 "nameA.funcB"
     ///   - completion: 完成回调
     ///   - discussion: 便捷方法，不需要传入参数数组
-    public func callBridge(
-        method: String,
+    public func callHandler(
+        _ method: String,
         completion: ((Result<JSONValue?, Error>) -> Void)? = nil
     ) {
         do {
             let callInfo = try NTLCallInfo(method: method, callbackId: generateCallbackId(), codableData: [String]())
-            internalCallBridge(callInfo: callInfo, completion: completion)
+            internalcallHandler(callInfo: callInfo, completion: completion)
         } catch {
             completion?(.failure(error))
         }
@@ -294,17 +294,17 @@ open class NTLWebView: WKWebView {
     /// 调用 js bridge 方法，支持直接传入任意类型参数数组
     /// - Parameters:
     ///   - method: JavaScript注册方法名，比如 "nameA.funcB"
-    ///   - args: 任意类型参数数组（会自动转换为JSONValue数组）
+    ///   - arguments: 任意类型参数数组（会自动转换为JSONValue数组）
     ///   - completion: 完成回调
     ///   - discussion: 便捷方法，支持传入[Any]类型的参数数组，自动转换为JSONValue
-    public func callBridge(
-        method: String,
-        args: [Any],
+    public func callHandler(
+        _ method: String,
+        arguments: [Any],
         completion: ((Result<JSONValue?, Error>) -> Void)? = nil
     ) {
         do {
-            let callInfo = try NTLCallInfo(method: method, callbackId: generateCallbackId(), anyArrayData: args)
-            internalCallBridge(callInfo: callInfo, completion: completion)
+            let callInfo = try NTLCallInfo(method: method, callbackId: generateCallbackId(), anyArrayData: arguments)
+            internalcallHandler(callInfo: callInfo, completion: completion)
         } catch {
             completion?(.failure(error))
         }
@@ -313,15 +313,15 @@ open class NTLWebView: WKWebView {
     /// 调用 js bridge 方法，支持直接传入 Codable 参数数组并返回指定类型
     /// - Parameters:
     ///   - method: JavaScript注册方法名，比如 "nameA.funcB"
-    ///   - args: Codable 参数数组（会自动编码为 JSONValue 数组）
+    ///   - arguments: Codable 参数数组（会自动编码为 JSONValue 数组）
     ///   - completion: 完成回调，返回指定类型的结果
     ///   - discussion: 便捷方法，自动将 Codable 对象数组转换为 JSONValue 数组
-    public func callTypedBridge<T: Encodable, U: Decodable>(
-        method: String,
-        args: [T],
+    public func callTypedHandler<T: Encodable, U: Decodable>(
+        _ method: String,
+        arguments: [T],
         completion: @escaping (Result<U, Error>) -> Void
     ) {
-        callBridge(method: method, args: args) { result in
+        callHandler(method, arguments: arguments) { result in
             switch result {
             case .success(let jsonValue):
                 do {
@@ -341,20 +341,20 @@ open class NTLWebView: WKWebView {
     ///   - method: JavaScript注册方法名，比如 "nameA.funcB"
     ///   - completion: 完成回调，返回指定类型的结果
     ///   - discussion: 便捷方法，不需要传入参数数组
-    public func callTypedBridge<U: Decodable>(
-        method: String,
+    public func callTypedHandler<U: Decodable>(
+        _ method: String,
         completion: @escaping (Result<U, Error>) -> Void
     ) {
-        callTypedBridge(method: method, args: [String](), completion: completion)
+        callTypedHandler(method, arguments: [String](), completion: completion)
     }
     
     // MARK: - Internal Call Bridge Method
     
-    /// 内部统一的调用入口，所有 callBridge 重载方法最终都调用此方法
+    /// 内部统一的调用入口，所有 callHandler 重载方法最终都调用此方法
     /// - Parameters:
     ///   - callInfo: 调用信息
     ///   - completion: 完成回调
-    private func internalCallBridge(callInfo: NTLCallInfo, completion: ((Result<JSONValue?, Error>) -> Void)? = nil) {
+    private func internalcallHandler(callInfo: NTLCallInfo, completion: ((Result<JSONValue?, Error>) -> Void)? = nil) {
         if isInitialized {
             // 如果已初始化，直接调度
             dispatchJavascriptCall(callInfo)
