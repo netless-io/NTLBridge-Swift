@@ -17,7 +17,7 @@ class Model {
         let webView = NTLWebView(frame: .init(x: 0, y: 0, width: 244, height: 244), configuration: configuration)
         webView.isDebugMode = true
         webView.isInspectable = true
-        webView.load(.init(url: .init(string: "http://localhost:3000/")!))
+        _ = webView.load(.init(url: .init(string: "http://localhost:3000/")!))
         
         webView.register(methodName: "testSyn") { args in
             print("get testSyn arg", args)

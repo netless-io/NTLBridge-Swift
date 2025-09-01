@@ -91,9 +91,6 @@ open class NTLWebView: WKWebView {
         // 设置UIDelegate以支持同步调用
         uiDelegate = self
         
-        // 设置NavigationDelegate以监听页面导航
-        navigationDelegate = self
-        
         // 创建弱引用代理避免循环引用
         scriptMessageProxy = WeakScriptMessageHandlerProxy(target: self)
         
@@ -139,6 +136,17 @@ open class NTLWebView: WKWebView {
         configuration.userContentController.addUserScript(userScript)
         
         debugLog("Bridge setup completed, ready for dsbridge.js integration")
+    }
+    
+    // MARK: - Load Overrides
+    open override func load(_ request: URLRequest) -> WKNavigation? {
+        cleanupPendingJSCalls()
+        return super.load(request)
+    }
+    
+    open override func loadHTMLString(_ string: String, baseURL: URL?) -> WKNavigation? {
+        cleanupPendingJSCalls()
+        return super.loadHTMLString(string, baseURL: baseURL)
     }
     
     // MARK: - Public Registration API
@@ -448,15 +456,6 @@ open class NTLWebView: WKWebView {
         registeredHandlers = registeredHandlers.filter { _, container in
             return container.isValid
         }
-    }
-}
-
-// MARK: - WKNavigationDelegate
-
-extension NTLWebView: WKNavigationDelegate {
-    public func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
-        // 当开始新的页面导航时，清理所有待处理的JavaScript调用任务
-        cleanupPendingJSCalls()
     }
 }
 
