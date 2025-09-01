@@ -367,7 +367,7 @@ struct NTLWebViewTests {
             var result: String?
             var error: Error?
 
-            webView.callTypedHandler("testStringMethod") { (response: Result<String, Error>) in
+            webView.callTypedHandler("testStringMethod", expecting: String.self) { (response: Result<String, Error>) in
                 switch response {
                 case .success(let value):
                     result = value
@@ -403,7 +403,7 @@ struct NTLWebViewTests {
             var result: TestUser?
             var error: Error?
 
-            webView.callTypedHandler("testUserMethod") { (response: Result<TestUser, Error>) in
+            webView.callTypedHandler("testUserMethod", expecting: TestUser.self) { (response: Result<TestUser, Error>) in
                 switch response {
                 case .success(let value):
                     result = value
@@ -443,7 +443,7 @@ struct NTLWebViewTests {
             var result: [TestItem]?
             var error: Error?
 
-            webView.callTypedHandler("testArrayMethod") { (response: Result<[TestItem], Error>) in
+            webView.callTypedHandler("testArrayMethod", expecting: [TestItem].self) { (response: Result<[TestItem], Error>) in
                 switch response {
                 case .success(let value):
                     result = value
@@ -489,7 +489,7 @@ struct NTLWebViewTests {
             var result: StrictUser?
             var error: Error?
 
-            webView.callTypedHandler("testIncompleteUserMethod") { (response: Result<StrictUser, Error>) in
+            webView.callTypedHandler("testIncompleteUserMethod", expecting: StrictUser.self) { (response: Result<StrictUser, Error>) in
                 switch response {
                 case .success(let value):
                     result = value

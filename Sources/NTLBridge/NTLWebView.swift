@@ -319,6 +319,7 @@ open class NTLWebView: WKWebView {
     public func callTypedHandler<T: Encodable, U: Decodable>(
         _ method: String,
         arguments: [T],
+        expecting type: U.Type,
         completion: @escaping (Result<U, Error>) -> Void
     ) {
         callHandler(method, arguments: arguments) { result in
@@ -343,9 +344,10 @@ open class NTLWebView: WKWebView {
     ///   - discussion: 便捷方法，不需要传入参数数组
     public func callTypedHandler<U: Decodable>(
         _ method: String,
+        expecting type: U.Type,
         completion: @escaping (Result<U, Error>) -> Void
     ) {
-        callTypedHandler(method, arguments: [String](), completion: completion)
+        callTypedHandler(method, arguments: [String](), expecting: type, completion: completion)
     }
     
     // MARK: - Internal Call Bridge Method

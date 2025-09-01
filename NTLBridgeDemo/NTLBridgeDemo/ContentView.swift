@@ -69,6 +69,16 @@ struct ContentView: View {
             Button("Call js sync") {
                 model.webView.callHandler("syn.tag") { process($0) }
             }
+            Button("Call js typed sync") {
+                model.webView.callTypedHandler("syn.tag", expecting: String.self) { result in
+                    switch result {
+                    case .success(let success):
+                        model.jsResult = "Typed result: \(success)"
+                    case .failure(let failure):
+                        model.jsResult = "Typed error: \(failure.localizedDescription)"
+                    }
+                }
+            }
             Button("Call js sync multiparam") {
                 model.webView.callHandler("syn.multi", arguments: [["1": 111]])  { process($0) }
             }
