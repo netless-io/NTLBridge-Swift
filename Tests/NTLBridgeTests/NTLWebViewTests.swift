@@ -571,7 +571,7 @@ struct NTLWebViewTests {
             #expect(!asyncCallCompleted)
             #expect(asyncCallError == nil)
 
-            webView.webView(webView, didStartProvisionalNavigation: nil)
+            webView.load(URLRequest(url: URL(string: "http://localhost:3000/")!))
 
             // Verify that pending callbacks were cleaned up (should have errors now)
             #expect(syncCallError != nil)
