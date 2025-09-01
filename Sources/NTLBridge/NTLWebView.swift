@@ -541,16 +541,6 @@ extension NTLWebView: WKScriptMessageHandler {
         }
     }
     
-    private func handleCallbackResponse(callbackStub: String, data: JSONValue?) {
-        guard let callbackId = Int(callbackStub),
-              let completion = pendingCallbacks.removeValue(forKey: callbackId) else {
-            debugLog("No pending callback found for stub: \(callbackStub)")
-            return
-        }
-        
-        completion(.success(data))
-    }
-    
     internal func handleReturnValueFromJS(_ param: JSONValue) {
         guard case let .dictionary(dictionary) = param, let callbackId = dictionary["id"]?.numberValue
         else { return }
@@ -558,8 +548,6 @@ extension NTLWebView: WKScriptMessageHandler {
         let data = dictionary["data"]
         let complete = dictionary["complete"]?.boolValue ?? true
         let error = dictionary["error"]
-        
-        
         
         if let completion = pendingCallbacks[callbackIdInt] {
             if complete {
