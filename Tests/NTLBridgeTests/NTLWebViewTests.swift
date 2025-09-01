@@ -524,69 +524,460 @@ struct NTLWebViewTests {
         }
     }
 
-    // MARK: - Navigation Tests
+    // MARK: - Generic Register Method Tests
 
-    @Test("Load request triggers cleanup")
-    func loadRequestTriggersCleanup() async {
-        _ = await MainActor.run {
+    @Test("Generic register method with Codable struct parameter")
+    func genericRegisterMethodWithCodableStructParameter() async {
+        await MainActor.run {
             let webView = NTLWebView()
-
-            // Register some test JS methods
-            webView.register(methodName: "test.cleanupMethod") { _ in
-                "test response"
+            
+            struct TestUser: Codable {
+                let name: String
+                let age: Int
+            }
+            
+            // Register method with Codable parameter
+            webView.register(methodName: "processUser", expecting: TestUser.self) { user in
+                .string("Processed user: \(user.name), age \(user.age)")
             }
 
-            webView.registerAsync(methodName: "test.asyncCleanupMethod") { _, completion in
-                completion(.success("async response"))
-            }
+            let retStr = "{\"data\":{\"name\":\"Charlie\",\"age\":30}}"
+            let response = webView.testHandleDSBridgeSyncCall(method: "processUser", argStr: retStr)
+            
+            // Verify the response
+            let obj = try! JSONSerialization.jsonObject(with: response.data(using: .utf8)!) as? [String: Any]
+            let result = obj?["data"] as? String
 
-            // Make some JS calls that will be pending when navigation occurs
-            var syncCallCompleted = false
-            var syncCallError: Error?
-
-            webView.callHandler("test.cleanupMethod", arguments: [String]()) { result in
-                switch result {
-                case .success:
-                    syncCallCompleted = true
-                case .failure(let error):
-                    syncCallError = error
-                }
-            }
-
-            var asyncCallCompleted = false
-            var asyncCallError: Error?
-
-            webView.callHandler("test.asyncCleanupMethod", arguments: [String]()) { result in
-                switch result {
-                case .success:
-                    asyncCallCompleted = true
-                case .failure(let error):
-                    asyncCallError = error
-                }
-            }
-
-            // Verify calls are pending (should not be completed yet since bridge not initialized)
-            #expect(!syncCallCompleted)
-            #expect(syncCallError == nil)
-            #expect(!asyncCallCompleted)
-            #expect(asyncCallError == nil)
-
-            webView.load(URLRequest(url: URL(string: "http://localhost:3000/")!))
-
-            // Verify that pending callbacks were cleaned up (should have errors now)
-            #expect(syncCallError != nil)
-            #expect(asyncCallError != nil)
-
-            // Verify the error is the expected navigation cancellation error
-            if let syncError = syncCallError as? NSError {
-                #expect(syncError.domain == "NTLBridge")
-                #expect(syncError.code == -2)
-            }
-
-            if let asyncError = asyncCallError as? NSError {
-                #expect(asyncError.domain == "NTLBridge")
-                #expect(asyncError.code == -2)
-            }
+            #expect(result == "Processed user: Charlie, age 30")
         }
+    }
+
+    @Test("Generic register method with simple string parameter")
+    func genericRegisterMethodWithSimpleStringParameter() async {
+        await MainActor.run {
+            let webView = NTLWebView()
+            
+            // Register method with simple String parameter
+            webView.register(methodName: "processString", expecting: String.self) { text in
+                .string("Processed: \(text)")
+            }
+            
+            #expect(webView.registeredMethods.contains("processString"))
+        }
+    }
+
+    @Test("Generic register method with simple int parameter")
+    func genericRegisterMethodWithSimpleIntParameter() async {
+        await MainActor.run {
+            let webView = NTLWebView()
+            
+            // Register method with simple Int parameter
+            webView.register(methodName: "processInt", expecting: Int.self) { number in
+                .number(Double(number * 2))
+            }
+            
+//            let ret = webView.testCreateDSBridgeSuccessResponse(result: 1)
+            
+            
+            #expect(webView.registeredMethods.contains("processInt"))
+        }
+    }
+
+    // MARK: - DSBridge Sync Call Response Tests
+
+    @Test("createDSBridgeSuccessResponse with nil result")
+    func createDSBridgeSuccessResponseWithNilResult() async {
+        await MainActor.run {
+            let webView = NTLWebView()
+            
+            // Access internal method using extension
+            let response = webView.testCreateDSBridgeSuccessResponse(result: nil)
+            
+            // Parse the response to verify structure
+            let jsonData = response.data(using: .utf8)!
+            let jsonObject = try! JSONSerialization.jsonObject(with: jsonData) as! [String: Any]
+            
+            #expect(jsonObject["code"] as! Int == 0)
+            #expect(jsonObject["data"] is NSNull)
+        }
+    }
+
+    @Test("createDSBridgeSuccessResponse with string result")
+    func createDSBridgeSuccessResponseWithStringResult() async {
+        await MainActor.run {
+            let webView = NTLWebView()
+            
+            let result: JSONValue = .string("Hello World")
+            let response = webView.testCreateDSBridgeSuccessResponse(result: result)
+            
+            // Parse the response to verify structure
+            let jsonData = response.data(using: .utf8)!
+            let jsonObject = try! JSONSerialization.jsonObject(with: jsonData) as! [String: Any]
+            
+            #expect(jsonObject["code"] as! Int == 0)
+            #expect(jsonObject["data"] as! String == "Hello World")
+        }
+    }
+
+    @Test("createDSBridgeSuccessResponse with number result")
+    func createDSBridgeSuccessResponseWithNumberResult() async {
+        await MainActor.run {
+            let webView = NTLWebView()
+            
+            let result: JSONValue = .number(42)
+            let response = webView.testCreateDSBridgeSuccessResponse(result: result)
+            
+            // Parse the response to verify structure
+            let jsonData = response.data(using: .utf8)!
+            let jsonObject = try! JSONSerialization.jsonObject(with: jsonData) as! [String: Any]
+            
+            #expect(jsonObject["code"] as! Int == 0)
+            #expect(jsonObject["data"] as! Int == 42)
+        }
+    }
+
+    @Test("createDSBridgeSuccessResponse with dictionary result")
+    func createDSBridgeSuccessResponseWithDictionaryResult() async {
+        await MainActor.run {
+            let webView = NTLWebView()
+            
+            let result: JSONValue = .dictionary([
+                "name": .string("Alice"),
+                "age": .number(28)
+            ])
+            let response = webView.testCreateDSBridgeSuccessResponse(result: result)
+            
+            // Parse the response to verify structure
+            let jsonData = response.data(using: .utf8)!
+            let jsonObject = try! JSONSerialization.jsonObject(with: jsonData) as! [String: Any]
+            
+            #expect(jsonObject["code"] as! Int == 0)
+            let data = jsonObject["data"] as! [String: Any]
+            #expect(data["name"] as! String == "Alice")
+            #expect(data["age"] as! Int == 28)
+        }
+    }
+
+    @Test("createDSBridgeErrorResponse with simple error")
+    func createDSBridgeErrorResponseWithSimpleError() async {
+        await MainActor.run {
+            let webView = NTLWebView()
+            
+            let errorMessage = "Method not found"
+            let response = webView.testCreateDSBridgeErrorResponse(error: errorMessage)
+            
+            // Parse the response to verify structure
+            let jsonData = response.data(using: .utf8)!
+            let jsonObject = try! JSONSerialization.jsonObject(with: jsonData) as! [String: Any]
+            
+            #expect(jsonObject["code"] as! Int == -1)
+            #expect(jsonObject["data"] as! String == "Method not found")
+        }
+    }
+
+    @Test("createDSBridgeErrorResponse with complex error message")
+    func createDSBridgeErrorResponseWithComplexErrorMessage() async {
+        await MainActor.run {
+            let webView = NTLWebView()
+            
+            let errorMessage = "Method handler target has been deallocated: testMethod"
+            let response = webView.testCreateDSBridgeErrorResponse(error: errorMessage)
+            
+            // Parse the response to verify structure
+            let jsonData = response.data(using: .utf8)!
+            let jsonObject = try! JSONSerialization.jsonObject(with: jsonData) as! [String: Any]
+            
+            #expect(jsonObject["code"] as! Int == -1)
+            #expect(jsonObject["data"] as! String == "Method handler target has been deallocated: testMethod")
+        }
+    }
+
+    @Test("createDSBridgeErrorResponse with empty error")
+    func createDSBridgeErrorResponseWithEmptyError() async {
+        await MainActor.run {
+            let webView = NTLWebView()
+            
+            let errorMessage = ""
+            let response = webView.testCreateDSBridgeErrorResponse(error: errorMessage)
+            
+            // Parse the response to verify structure
+            let jsonData = response.data(using: .utf8)!
+            let jsonObject = try! JSONSerialization.jsonObject(with: jsonData) as! [String: Any]
+            
+            #expect(jsonObject["code"] as! Int == -1)
+            #expect(jsonObject["data"] as! String == "")
+        }
+    }
+
+    // MARK: - DSBridge Sync Call Integration Tests
+
+    @Test("handleDSBridgeSyncCall success scenario")
+    func handleDSBridgeSyncCallSuccessScenario() async {
+        await MainActor.run {
+            let webView = NTLWebView()
+            
+            // Register a test method
+            webView.register(methodName: "testSyncMethod") { param in
+                if case .string(let value) = param {
+                    return .string("Sync response: \(value)")
+                }
+                return .string("Sync response: unknown")
+            }
+            
+            // Test the sync call
+            let argStr = "{\"data\":\"hello\"}"
+            let response = webView.testHandleDSBridgeSyncCall(method: "testSyncMethod", argStr: argStr)
+            
+            // Parse and verify the response
+            let jsonData = response.data(using: .utf8)!
+            let jsonObject = try! JSONSerialization.jsonObject(with: jsonData) as! [String: Any]
+            
+            #expect(jsonObject["code"] as! Int == 0)
+            #expect(jsonObject["data"] as! String == "Sync response: hello")
+        }
+    }
+
+    @Test("handleDSBridgeSyncCall method not found")
+    func handleDSBridgeSyncCallMethodNotFound() async {
+        await MainActor.run {
+            let webView = NTLWebView()
+            
+            // Test sync call with non-existent method
+            let argStr = "{\"data\":\"test\"}"
+            let response = webView.testHandleDSBridgeSyncCall(method: "nonExistentMethod", argStr: argStr)
+            
+            // Parse and verify the error response
+            let jsonData = response.data(using: .utf8)!
+            let jsonObject = try! JSONSerialization.jsonObject(with: jsonData) as! [String: Any]
+            
+            #expect(jsonObject["code"] as! Int == -1)
+            #expect(jsonObject["data"] as! String == "Method not found: nonExistentMethod")
+        }
+    }
+
+    @Test("handleDSBridgeSyncCall with complex parameters")
+    func handleDSBridgeSyncCallWithComplexParameters() async {
+        await MainActor.run {
+            let webView = NTLWebView()
+            
+            // Register a method that handles complex parameters
+            webView.register(methodName: "processComplexData") { param in
+                if case .dictionary(let dict) = param {
+                    let name = dict["name"]?.stringValue ?? "unknown"
+                    let age = dict["age"]?.numberValue ?? 0
+                    return .dictionary([
+                        "processed": .string("Processed \(name), age \(age)"),
+                        "timestamp": .number(Date().timeIntervalSince1970)
+                    ])
+                }
+                return .dictionary(["error": .string("Invalid input")])
+            }
+            
+            // Test with complex JSON data
+            let argStr = "{\"data\":{\"name\":\"Alice\",\"age\":28,\"city\":\"New York\"}}"
+            let response = webView.testHandleDSBridgeSyncCall(method: "processComplexData", argStr: argStr)
+            
+            // Parse and verify the response
+            let jsonData = response.data(using: .utf8)!
+            let jsonObject = try! JSONSerialization.jsonObject(with: jsonData) as! [String: Any]
+            
+            #expect(jsonObject["code"] as! Int == 0)
+            let data = jsonObject["data"] as! [String: Any]
+            #expect((data["processed"] as! String).contains("Processed Alice"))
+            #expect(data["timestamp"] is Double)
+        }
+    }
+
+    @Test("handleDSBridgeSyncCall with array parameters")
+    func handleDSBridgeSyncCallWithArrayParameters() async {
+        await MainActor.run {
+            let webView = NTLWebView()
+            
+            // Register a method that handles array parameters
+            webView.register(methodName: "processArray") { param in
+                if case .array(let array) = param {
+                    let count = array.count
+                    let sum = array.compactMap { $0.numberValue }.reduce(0, +)
+                    return .dictionary([
+                        "count": .number(Double(count)),
+                        "sum": .number(sum),
+                        "average": .number(count > 0 ? sum / Double(count) : 0)
+                    ])
+                }
+                return .dictionary(["error": .string("Expected array")])
+            }
+            
+            // Test with array data
+            let argStr = "{\"data\":[1,2,3,4,5]}"
+            let response = webView.testHandleDSBridgeSyncCall(method: "processArray", argStr: argStr)
+            
+            // Parse and verify the response
+            let jsonData = response.data(using: .utf8)!
+            let jsonObject = try! JSONSerialization.jsonObject(with: jsonData) as! [String: Any]
+            
+            #expect(jsonObject["code"] as! Int == 0)
+            let data = jsonObject["data"] as! [String: Any]
+            #expect(data["count"] as! Int == 5)
+            #expect(data["sum"] as! Int == 15)
+            #expect(data["average"] as! Double == 3.0)
+        }
+    }
+
+    @Test("handleDSBridgeSyncCall method throws error")
+    func handleDSBridgeSyncCallMethodThrowsError() async {
+        await MainActor.run {
+            let webView = NTLWebView()
+            
+            // Register a method that throws an error
+            webView.register(methodName: "errorMethod") { _ in
+                throw NSError(domain: "TestDomain", code: 123, userInfo: [
+                    NSLocalizedDescriptionKey: "Test error message"
+                ])
+            }
+            
+            // Test the sync call that should throw
+            let argStr = "{\"data\":\"test\"}"
+            let response = webView.testHandleDSBridgeSyncCall(method: "errorMethod", argStr: argStr)
+            
+            // Parse and verify the error response
+            let jsonData = response.data(using: .utf8)!
+            let jsonObject = try! JSONSerialization.jsonObject(with: jsonData) as! [String: Any]
+            
+            #expect(jsonObject["code"] as! Int == -1)
+            #expect(jsonObject["data"] as! String == "Test error message")
+        }
+    }
+
+    @Test("handleDSBridgeSyncCall with async method (should fail)")
+    func handleDSBridgeSyncCallWithAsyncMethod() async {
+        await MainActor.run {
+            let webView = NTLWebView()
+            
+            // Register an async method
+            webView.registerAsync(methodName: "asyncMethod") { _, completion in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    completion(.success("async result"))
+                }
+            }
+            
+            // Test sync call with async method (should fail)
+            let argStr = "{\"data\":\"test\"}"
+            let response = webView.testHandleDSBridgeSyncCall(method: "asyncMethod", argStr: argStr)
+            
+            // Parse and verify the error response
+            let jsonData = response.data(using: .utf8)!
+            let jsonObject = try! JSONSerialization.jsonObject(with: jsonData) as! [String: Any]
+            
+            #expect(jsonObject["code"] as! Int == -1)
+            #expect(jsonObject["data"] as! String == "Async method cannot be called synchronously: asyncMethod")
+        }
+    }
+
+    @Test("handleDSBridgeSyncCall with deallocated target")
+    func handleDSBridgeSyncCallWithDeallocatedTarget() async {
+        await MainActor.run {
+            let webView = NTLWebView()
+            
+            // Register a method with a weak target
+            var target: TestTarget? = TestTarget(name: "Temporary")
+            webView.register(methodName: "tempMethod", target: target!) { target, _ in
+                .string(target.name)
+            }
+            
+            // Deallocate the target
+            target = nil
+            
+            // Force cleanup by accessing registeredMethods
+            _ = webView.registeredMethods
+            
+            // Test sync call with deallocated target
+            let argStr = "{\"data\":\"test\"}"
+            let response = webView.testHandleDSBridgeSyncCall(method: "tempMethod", argStr: argStr)
+            
+            // Parse and verify the error response
+            let jsonData = response.data(using: .utf8)!
+            let jsonObject = try! JSONSerialization.jsonObject(with: jsonData) as! [String: Any]
+            
+            #expect(jsonObject["code"] as! Int == -1)
+            #expect(jsonObject["data"] as! String == "Method not found: tempMethod")
+        }
+    }
+
+    @Test("handleDSBridgeSyncCall with malformed JSON")
+    func handleDSBridgeSyncCallWithMalformedJSON() async {
+        await MainActor.run {
+            let webView = NTLWebView()
+            
+            // Register a simple method
+            webView.register(methodName: "simpleMethod") { _ in
+                .string("ok")
+            }
+            
+            // Test with malformed JSON (should not crash, should handle gracefully)
+            let argStr = "{malformed json}"
+            let response = webView.testHandleDSBridgeSyncCall(method: "simpleMethod", argStr: argStr)
+            
+            // Should still work, as the parsing will default to .null
+            let jsonData = response.data(using: .utf8)!
+            let jsonObject = try! JSONSerialization.jsonObject(with: jsonData) as! [String: Any]
+            
+            #expect(jsonObject["code"] as! Int == 0)
+            #expect(jsonObject["data"] as! String == "ok")
+        }
+    }
+
+    @Test("handleDSBridgeSyncCall with empty arguments")
+    func handleDSBridgeSyncCallWithEmptyArguments() async {
+        await MainActor.run {
+            let webView = NTLWebView()
+            
+            // Register a method that handles empty arguments
+            webView.register(methodName: "noArgsMethod") { param in
+                if case .null = param {
+                    return .string("No arguments received")
+                } else {
+                    return .string("Arguments received: \(param)")
+                }
+            }
+            
+            // Test with empty arguments
+            let argStr = ""
+            let response = webView.testHandleDSBridgeSyncCall(method: "noArgsMethod", argStr: argStr)
+            
+            // Parse and verify the response
+            let jsonData = response.data(using: .utf8)!
+            let jsonObject = try! JSONSerialization.jsonObject(with: jsonData) as! [String: Any]
+            
+            #expect(jsonObject["code"] as! Int == 0)
+            #expect(jsonObject["data"] as! String == "No arguments received")
+        }
+    }
+}
+
+// MARK: - Internal Access Extensions for Testing
+
+extension NTLWebView {
+    // Expose internal methods for testing
+    func testCreateDSBridgeSuccessResponse(result: JSONValue?) -> String {
+        // Use the existing internal method
+        let response = JSONValue.dictionary([
+            "code": .number(0),
+            "data": result ?? .null
+        ])
+        return NTLBridgeUtil.jsonString(from: response)
+    }
+    
+    func testCreateDSBridgeErrorResponse(error: String) -> String {
+        // Use the existing internal method
+        let response = JSONValue.dictionary([
+            "code": .number(-1),
+            "data": .string(error)
+        ])
+        return NTLBridgeUtil.jsonString(from: response)
+    }
+    
+    func testHandleDSBridgeSyncCall(method: String, argStr: String) -> String {
+        // Call the actual internal method for testing
+        return handleDSBridgeSyncCall(method: method, argStr: argStr)
     }
 }

@@ -8,7 +8,7 @@
 import Foundation
 
 func jsStructuredError(jsonValue: JSONValue) -> NSError? {
-    guard let dictionary = jsonValue.dictionaryValue,
+    guard case let .dictionary(dictionary) = jsonValue,
           let name = dictionary["name"]?.stringValue,
           let message = dictionary["message"]?.stringValue,
           let stack = dictionary["stack"]?.stringValue

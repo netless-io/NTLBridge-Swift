@@ -180,6 +180,44 @@ open class NTLWebView: WKWebView {
         debugLog("Registered method: \(methodName) with target: \(type(of: target))")
     }
     
+    /// 注册一个与实例绑定的方法，自动处理内存管理，支持 Codable 返回类型
+    /// - Parameters:
+    ///   - methodName: 方法名
+    ///   - returnType: 返回类型，可以显式指定 Codable 类型
+    ///   - target: 目标实例
+    ///   - handler: 处理器闭包，返回 Codable 类型，会自动处理弱引用和 JSON 转换
+    public func register<T: AnyObject, R: Codable>(
+        methodName: String,
+        expecting returnType: R.Type,
+        target: T,
+        handler: @escaping (_ target: T, _ param: R) throws -> JSONValue?,
+    ) {
+        // 调用原函数，自动将 Codable 返回类型转换为 JSONValue
+        register(methodName: methodName, target: target) { target, param in
+            let typedParam: R = try NTLBridgeUtil.convertValueOrThrow(param)
+            let result = try handler(target, typedParam)
+            return result
+        }
+    }
+    
+    /// 注册一个静态或独立的闭包，支持 Codable 返回类型
+    /// - Parameters:
+    ///   - methodName: 方法名
+    ///   - returnType: 返回类型，可以显式指定 Codable 类型
+    ///   - handler: 处理器闭包，返回 Codable 类型，会自动处理 JSON 转换
+    public func register<R: Codable>(
+        methodName: String,
+        expecting returnType: R.Type,
+        handler: @escaping (_ param: R) throws -> JSONValue?,
+    ) {
+        // 调用原函数，自动将 Codable 返回类型转换为 JSONValue
+        register(methodName: methodName) { param in
+            let typedParam: R = try NTLBridgeUtil.convertValueOrThrow(param)
+            let result = try handler(typedParam)
+            return result
+        }
+    }
+    
     /// 注册一个静态或独立的闭包
     /// - Parameters:
     ///   - methodName: 方法名
@@ -487,7 +525,7 @@ extension NTLWebView: WKScriptMessageHandler {
         var callbackStub: String?
         var methodParam: JSONValue = .null
         
-        if let argDict = argData.dictionaryValue {
+        if case let .dictionary(argDict) = argData {
             callbackStub = argDict["_dscbstub"]?.stringValue
             methodParam = argDict["data"] ?? .null
         }
@@ -645,12 +683,12 @@ extension NTLWebView: WKUIDelegate {
         }
     }
     
-    private func handleDSBridgeSyncCall(method: String, argStr: String) -> String {
+    internal func handleDSBridgeSyncCall(method: String, argStr: String) -> String {
         // 解析参数（同步调用不需要回调）
         let argData = NTLBridgeUtil.parseJSONValue(from: argStr)
         var methodParam: JSONValue = .null
         
-        if let argDict = argData.dictionaryValue,
+        if case let .dictionary(argDict) = argData,
            let data = argDict["data"] {
             methodParam = data
         }
