@@ -1,73 +1,34 @@
 import Foundation
 import WebKit
 
-/// JavaScript方法处理器类型别名
-public typealias JSMethodHandler = (JSONValue) throws -> JSONValue?
-
-/// JavaScript异步方法处理器类型别名
-public typealias JSAsyncMethodHandler = (JSONValue, @escaping (Result<JSONValue?, Error>) -> Void) -> Void
-
-/// JavaScript方法处理器存储结构
-private struct JSMethodHandlerContainer {
-    let handler: JSMethodHandler
-    let asyncHandler: JSAsyncMethodHandler?
-    weak var target: AnyObject?
-    private let hasTarget: Bool
-    let isAsync: Bool
-    
-    init(handler: @escaping JSMethodHandler, target: AnyObject? = nil) {
-        self.handler = handler
-        self.asyncHandler = nil
-        self.target = target
-        self.hasTarget = target != nil
-        self.isAsync = false
-    }
-    
-    /// 每次调用只能回调一次。
-    init(asyncHandler: @escaping JSAsyncMethodHandler, target: AnyObject? = nil) {
-        self.handler = { _ in throw NSError(domain: "NTLBridge", code: -1, userInfo: [NSLocalizedDescriptionKey: "Async handler used in sync context"]) }
-        self.asyncHandler = asyncHandler
-        self.target = target
-        self.hasTarget = target != nil
-        self.isAsync = true
-    }
-    
-    /// 检查目标对象是否仍然有效（对于实例方法）
-    var isValid: Bool {
-        // 如果初始化时没有目标对象（静态方法），始终有效
-        // 如果有目标对象，检查弱引用是否仍然指向有效对象
-        hasTarget ? target != nil : true
-    }
-}
-
 /// 核心WebView类，提供JavaScript Bridge功能
 open class NTLWebView: WKWebView {
     
-    // MARK: - Private Properties
+    // MARK: - Properties
     
     /// 已注册的JavaScript方法处理器
-    private var registeredHandlers: [String: JSMethodHandlerContainer] = [:]
+    internal var registeredHandlers: [String: JSMethodHandlerContainer] = [:]
     
     /// 回调ID计数器，用于生成唯一的回调ID
-    private var callbackIdCounter: Int = 0
+    internal var callbackIdCounter: Int = 0
     
     /// 待处理的回调字典，存储Native到JS的回调
-    private var pendingCallbacks: [Int: (Result<JSONValue?, Error>) -> Void] = [:]
+    internal var pendingCallbacks: [Int: (Result<JSONValue?, Error>) -> Void] = [:]
     
     /// 弱引用代理，用于处理脚本消息
-    private var scriptMessageProxy: WeakScriptMessageHandlerProxy?
+    internal var scriptMessageProxy: WeakScriptMessageHandlerProxy?
     
     /// 待处理的启动队列，存储在JavaScript加载完成前需要调用的方法
-    private var startupCallQueue: [NTLCallInfo] = []
+    internal var startupCallQueue: [NTLCallInfo] = []
     
     /// 标记是否已初始化完成
-    private var isInitialized: Bool = false
+    internal var isInitialized: Bool = false
     
     /// 调试模式开关
     public var isDebugMode: Bool = false
     
     /// 脚本消息处理名称，兼容原版DSBridge
-    private static let scriptMessageHandlerName = "asyncBridge"
+    internal static let scriptMessageHandlerName = "asyncBridge"
     
     // MARK: - Initialization
     
@@ -149,260 +110,13 @@ open class NTLWebView: WKWebView {
         return super.loadHTMLString(string, baseURL: baseURL)
     }
     
-    // MARK: - Public Registration API
-    
-    /// 注册一个与实例绑定的方法，自动处理内存管理
-    /// - Parameters:
-    ///   - methodName: 方法名
-    ///   - target: 目标实例
-    ///   - handler: 处理器闭包，会自动处理弱引用
-    public func register<T: AnyObject>(
-        methodName: String,
-        target: T,
-        handler: @escaping (_ target: T, _ param: JSONValue) throws -> JSONValue?
-    ) {
-        guard NTLBridgeUtil.isValidMethodName(methodName) else {
-            debugLog("Invalid method name or namespace: \(methodName))")
-            return
-        }
-        
-        // 创建弱引用包装的处理器
-        let wrappedHandler: JSMethodHandler = { [weak target] param in
-            guard let strongTarget = target else {
-                throw NSError(domain: "NTLBridge", code: -1, userInfo: [NSLocalizedDescriptionKey: "Target instance has been deallocated"])
-            }
-            return try handler(strongTarget, param)
-        }
-        
-        let container = JSMethodHandlerContainer(handler: wrappedHandler, target: target)
-        registeredHandlers[methodName] = container
-        
-        debugLog("Registered method: \(methodName) with target: \(type(of: target))")
-    }
-    
-    /// 注册一个与实例绑定的方法，自动处理内存管理，支持 Codable 返回类型
-    /// - Parameters:
-    ///   - methodName: 方法名
-    ///   - returnType: 返回类型，可以显式指定 Codable 类型
-    ///   - target: 目标实例
-    ///   - handler: 处理器闭包，返回 Codable 类型，会自动处理弱引用和 JSON 转换
-    public func register<T: AnyObject, R: Codable>(
-        methodName: String,
-        expecting returnType: R.Type,
-        target: T,
-        handler: @escaping (_ target: T, _ param: R) throws -> JSONValue?,
-    ) {
-        // 调用原函数，自动将 Codable 返回类型转换为 JSONValue
-        register(methodName: methodName, target: target) { target, param in
-            let typedParam: R = try NTLBridgeUtil.convertValueOrThrow(param)
-            let result = try handler(target, typedParam)
-            return result
-        }
-    }
-    
-    /// 注册一个静态或独立的闭包，支持 Codable 返回类型
-    /// - Parameters:
-    ///   - methodName: 方法名
-    ///   - returnType: 返回类型，可以显式指定 Codable 类型
-    ///   - handler: 处理器闭包，返回 Codable 类型，会自动处理 JSON 转换
-    public func register<R: Codable>(
-        methodName: String,
-        expecting returnType: R.Type,
-        handler: @escaping (_ param: R) throws -> JSONValue?,
-    ) {
-        // 调用原函数，自动将 Codable 返回类型转换为 JSONValue
-        register(methodName: methodName) { param in
-            let typedParam: R = try NTLBridgeUtil.convertValueOrThrow(param)
-            let result = try handler(typedParam)
-            return result
-        }
-    }
-    
-    /// 注册一个静态或独立的闭包
-    /// - Parameters:
-    ///   - methodName: 方法名
-    ///   - handler: 处理器闭包
-    public func register(
-        methodName: String,
-        handler: @escaping (_ param: JSONValue) throws -> JSONValue?
-    ) {
-        guard NTLBridgeUtil.isValidMethodName(methodName) else {
-            debugLog("Invalid method name or namespace: \(methodName)")
-            return
-        }
-        
-        let container = JSMethodHandlerContainer(handler: handler)
-        registeredHandlers[methodName] = container
-        
-        debugLog("Registered static method: \(methodName)")
-    }
-    
-    /// 注册一个异步方法
-    /// - Parameters:
-    ///   - methodName: 方法名
-    ///   - handler: 异步处理器闭包
-    public func registerAsync(
-        methodName: String,
-        handler: @escaping JSAsyncMethodHandler
-    ) {
-        guard NTLBridgeUtil.isValidMethodName(methodName) else {
-            debugLog("Invalid method name or namespace: \(methodName)")
-            return
-        }
-        
-        let container = JSMethodHandlerContainer(asyncHandler: handler)
-        registeredHandlers[methodName] = container
-        
-        debugLog("Registered async method: \(methodName)")
-    }
-    
-    /// 注册一个与实例绑定的异步方法
-    /// - Parameters:
-    ///   - methodName: 方法名
-    ///   - target: 目标实例
-    ///   - handler: 异步处理器闭包，会自动处理弱引用
-    public func registerAsync<T: AnyObject>(
-        methodName: String,
-        target: T,
-        handler: @escaping (_ target: T, _ param: JSONValue, _ completion: @escaping (Result<JSONValue?, Error>) -> Void) -> Void
-    ) {
-        guard NTLBridgeUtil.isValidMethodName(methodName) else {
-            debugLog("Invalid method name or namespace: \(methodName))")
-            return
-        }
-        
-        let wrappedAsyncHandler: JSAsyncMethodHandler = { [weak target] param, completion in
-            guard let strongTarget = target else {
-                completion(.failure(NSError(domain: "NTLBridge", code: -1, userInfo: [NSLocalizedDescriptionKey: "Target instance has been deallocated"])))
-                return
-            }
-            handler(strongTarget, param, completion)
-        }
-        
-        let container = JSMethodHandlerContainer(asyncHandler: wrappedAsyncHandler, target: target)
-        registeredHandlers[methodName] = container
-        
-        debugLog("Registered async method: \(methodName) with target: \(type(of: target))")
-    }
-    
-    /// 取消注册方法
-    /// - Parameters:
-    ///   - methodName: 方法名
-    public func unregister(methodName: String) {
-        registeredHandlers.removeValue(forKey: methodName)
-        debugLog("Unregistered method: \(methodName)")
-    }
-    
-    /// 获取已注册的方法列表
-    public var registeredMethods: [String] {
-        return Array(registeredHandlers.keys)
-    }
-    
-    // MARK: - JavaScript Communication
-    
-      
-    /// 调用 js bridge 方法，支持直接传入 Codable 参数数组
-    /// - Parameters:
-    ///   - method: JavaScript注册方法名，比如 "nameA.funcB"
-    ///   - arguments: Codable 参数数组（会自动编码为 JSONValue 数组）
-    ///   - completion: 完成回调
-    ///   - discussion: 便捷方法，自动将 Codable 对象数组转换为 JSONValue 数组
-    public func callHandler<T: Encodable>(
-        _ method: String,
-        arguments: [T],
-        completion: ((Result<JSONValue?, Error>) -> Void)? = nil
-    ) {
-        do {
-            let callInfo = try NTLCallInfo(method: method, callbackId: generateCallbackId(), codableData: arguments)
-            internalcallHandler(callInfo: callInfo, completion: completion)
-        } catch {
-            completion?(.failure(error))
-        }
-    }
-    
-    /// 调用 js bridge 方法（无参数版本）
-    /// - Parameters:
-    ///   - method: JavaScript注册方法名，比如 "nameA.funcB"
-    ///   - completion: 完成回调
-    ///   - discussion: 便捷方法，不需要传入参数数组
-    public func callHandler(
-        _ method: String,
-        completion: ((Result<JSONValue?, Error>) -> Void)? = nil
-    ) {
-        do {
-            let callInfo = try NTLCallInfo(method: method, callbackId: generateCallbackId(), codableData: [String]())
-            internalcallHandler(callInfo: callInfo, completion: completion)
-        } catch {
-            completion?(.failure(error))
-        }
-    }
-    
-    /// 调用 js bridge 方法，支持直接传入任意类型参数数组
-    /// - Parameters:
-    ///   - method: JavaScript注册方法名，比如 "nameA.funcB"
-    ///   - arguments: 任意类型参数数组（会自动转换为JSONValue数组）
-    ///   - completion: 完成回调
-    ///   - discussion: 便捷方法，支持传入[Any]类型的参数数组，自动转换为JSONValue
-    public func callHandler(
-        _ method: String,
-        arguments: [Any],
-        completion: ((Result<JSONValue?, Error>) -> Void)? = nil
-    ) {
-        do {
-            let callInfo = try NTLCallInfo(method: method, callbackId: generateCallbackId(), anyArrayData: arguments)
-            internalcallHandler(callInfo: callInfo, completion: completion)
-        } catch {
-            completion?(.failure(error))
-        }
-    }
-    
-    /// 调用 js bridge 方法，支持直接传入 Codable 参数数组并返回指定类型
-    /// - Parameters:
-    ///   - method: JavaScript注册方法名，比如 "nameA.funcB"
-    ///   - arguments: Codable 参数数组（会自动编码为 JSONValue 数组）
-    ///   - completion: 完成回调，返回指定类型的结果
-    ///   - discussion: 便捷方法，自动将 Codable 对象数组转换为 JSONValue 数组
-    public func callTypedHandler<T: Encodable, U: Decodable>(
-        _ method: String,
-        arguments: [T],
-        expecting type: U.Type,
-        completion: @escaping (Result<U, Error>) -> Void
-    ) {
-        callHandler(method, arguments: arguments) { result in
-            switch result {
-            case .success(let jsonValue):
-                do {
-                    let typedValue: U = try NTLBridgeUtil.convertValueOrThrow(jsonValue)
-                    completion(.success(typedValue))
-                } catch {
-                    completion(.failure(error))
-                }
-            case .failure(let error):
-                completion(.failure(error))
-            }
-        }
-    }
-    
-    /// 调用 js bridge 方法并返回指定类型（无参数版本）
-    /// - Parameters:
-    ///   - method: JavaScript注册方法名，比如 "nameA.funcB"
-    ///   - completion: 完成回调，返回指定类型的结果
-    ///   - discussion: 便捷方法，不需要传入参数数组
-    public func callTypedHandler<U: Decodable>(
-        _ method: String,
-        expecting type: U.Type,
-        completion: @escaping (Result<U, Error>) -> Void
-    ) {
-        callTypedHandler(method, arguments: [String](), expecting: type, completion: completion)
-    }
-    
-    // MARK: - Internal Call Bridge Method
+    // MARK: - Internal Methods
     
     /// 内部统一的调用入口，所有 callHandler 重载方法最终都调用此方法
     /// - Parameters:
     ///   - callInfo: 调用信息
     ///   - completion: 完成回调
-    private func internalcallHandler(callInfo: NTLCallInfo, completion: ((Result<JSONValue?, Error>) -> Void)? = nil) {
+    internal func internalcallHandler(callInfo: NTLCallInfo, completion: ((Result<JSONValue?, Error>) -> Void)? = nil) {
         if isInitialized {
             // 如果已初始化，直接调度
             dispatchJavascriptCall(callInfo)
@@ -417,6 +131,17 @@ open class NTLWebView: WKWebView {
         }
     }
     
+    internal func generateCallbackId() -> Int {
+        callbackIdCounter += 1
+        return callbackIdCounter
+    }
+    
+    internal func debugLog(_ message: String) {
+        if isDebugMode {
+            print("[NTLBridge] \(message)")
+        }
+    }
+    
     // MARK: - Private Methods
     
     /// 内部使用的注册方法，跳过验证
@@ -428,17 +153,6 @@ open class NTLWebView: WKWebView {
         registeredHandlers[methodName] = container
         
         debugLog("Registered internal method: \(methodName)")
-    }
-    
-    private func generateCallbackId() -> Int {
-        callbackIdCounter += 1
-        return callbackIdCounter
-    }
-    
-    private func debugLog(_ message: String) {
-        if isDebugMode {
-            print("[NTLBridge] \(message)")
-        }
     }
     
     private func registerInternalAPIs() {
