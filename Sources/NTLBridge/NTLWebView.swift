@@ -3,36 +3,35 @@ import WebKit
 
 /// 核心WebView类，提供JavaScript Bridge功能
 open class NTLWebView: WKWebView {
-    
     // MARK: - Properties
     
     /// 已注册的JavaScript方法处理器
-    internal var registeredHandlers: [String: JSMethodHandlerContainer] = [:]
+    var registeredHandlers: [String: JSMethodHandlerContainer] = [:]
     
     /// 回调ID计数器，用于生成唯一的回调ID
-    internal var callbackIdCounter: Int = 0
+    var callbackIdCounter: Int = 0
     
     /// 待处理的回调字典，存储Native到JS的回调
-    internal var pendingCallbacks: [Int: (Result<JSONValue?, Error>) -> Void] = [:]
+    var pendingCallbacks: [Int: (Result<JSONValue?, Error>) -> Void] = [:]
     
     /// 弱引用代理，用于处理脚本消息
-    internal var scriptMessageProxy: WeakScriptMessageHandlerProxy?
+    var scriptMessageProxy: WeakScriptMessageHandlerProxy?
     
     /// 待处理的启动队列，存储在JavaScript加载完成前需要调用的方法
-    internal var startupCallQueue: [NTLCallInfo] = []
+    var startupCallQueue: [NTLCallInfo] = []
     
     /// 标记是否已初始化完成
-    internal var isInitialized: Bool = false
+    var isInitialized: Bool = false
     
     /// 调试模式开关
     public var isDebugMode: Bool = false
     
     /// 脚本消息处理名称，兼容原版DSBridge
-    internal static let scriptMessageHandlerName = "asyncBridge"
+    static let scriptMessageHandlerName = "asyncBridge"
     
     // MARK: - Initialization
     
-    public override init(frame: CGRect, configuration: WKWebViewConfiguration) {
+    override public init(frame: CGRect, configuration: WKWebViewConfiguration) {
         super.init(frame: frame, configuration: configuration)
         setupBridge()
     }
@@ -100,12 +99,13 @@ open class NTLWebView: WKWebView {
     }
     
     // MARK: - Load Overrides
-    open override func load(_ request: URLRequest) -> WKNavigation? {
+
+    override open func load(_ request: URLRequest) -> WKNavigation? {
         cleanupPendingJSCalls()
         return super.load(request)
     }
     
-    open override func loadHTMLString(_ string: String, baseURL: URL?) -> WKNavigation? {
+    override open func loadHTMLString(_ string: String, baseURL: URL?) -> WKNavigation? {
         cleanupPendingJSCalls()
         return super.loadHTMLString(string, baseURL: baseURL)
     }
@@ -116,7 +116,7 @@ open class NTLWebView: WKWebView {
     /// - Parameters:
     ///   - callInfo: 调用信息
     ///   - completion: 完成回调
-    internal func internalcallHandler(callInfo: NTLCallInfo, completion: ((Result<JSONValue?, Error>) -> Void)? = nil) {
+    func internalcallHandler(callInfo: NTLCallInfo, completion: ((Result<JSONValue?, Error>) -> Void)? = nil) {
         if isInitialized {
             // 如果已初始化，直接调度
             dispatchJavascriptCall(callInfo)
@@ -131,12 +131,12 @@ open class NTLWebView: WKWebView {
         }
     }
     
-    internal func generateCallbackId() -> Int {
+    func generateCallbackId() -> Int {
         callbackIdCounter += 1
         return callbackIdCounter
     }
     
-    internal func debugLog(_ message: String) {
+    func debugLog(_ message: String) {
         if isDebugMode {
             print("[NTLBridge] \(message)")
         }
@@ -203,10 +203,9 @@ open class NTLWebView: WKWebView {
         debugLog("Startup queue dispatched")
     }
     
-    
     private func cleanupDeallocatedHandlers() {
         registeredHandlers = registeredHandlers.filter { _, container in
-            return container.isValid
+            container.isValid
         }
     }
 }
@@ -223,7 +222,8 @@ extension NTLWebView: WKScriptMessageHandler {
         // 解析DSBridge格式的消息：{"method": "methodName", "arg": "argumentString"}
         guard let messageDict = message.body as? [String: Any],
               let method = messageDict["method"] as? String,
-              let argStr = messageDict["arg"] as? String else {
+              let argStr = messageDict["arg"] as? String
+        else {
             debugLog("Failed to parse DSBridge message format")
             return
         }
@@ -272,15 +272,20 @@ extension NTLWebView: WKScriptMessageHandler {
                 return
             }
             
-            asyncHandler(methodParam) { [weak self] result in
-                DispatchQueue.main.async {
-                    switch result {
-                    case .success(let value):
-                        self?.sendDSBridgeResult(callbackStub: callbackStub, result: value)
-                    case .failure(let error):
-                        self?.sendDSBridgeError(callbackStub: callbackStub, error: error.localizedDescription)
+            do {
+                try asyncHandler(methodParam) { [weak self] result in
+                    DispatchQueue.main.async {
+                        switch result {
+                        case let .success(value):
+                            self?.sendDSBridgeResult(callbackStub: callbackStub, result: value)
+                        case let .failure(error):
+                            self?.sendDSBridgeError(callbackStub: callbackStub, error: error.localizedDescription)
+                        }
                     }
                 }
+            } catch {
+                debugLog("Method call failed: \(error)")
+                sendDSBridgeError(callbackStub: callbackStub, error: error.localizedDescription)
             }
         } else {
             // 同步处理
@@ -294,7 +299,7 @@ extension NTLWebView: WKScriptMessageHandler {
         }
     }
     
-    internal func handleReturnValueFromJS(_ param: JSONValue) {
+    func handleReturnValueFromJS(_ param: JSONValue) {
         guard case let .dictionary(dictionary) = param, let callbackId = dictionary["id"]?.numberValue
         else { return }
         let callbackIdInt = Int(callbackId)
@@ -378,7 +383,6 @@ extension NTLWebView: WKScriptMessageHandler {
 extension NTLWebView: WKUIDelegate {
     // 在这里完成同步调用。
     public func webView(_ webView: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String, defaultText: String?, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (String?) -> Void) {
-        
         let dsBridgePrefix = "_dsbridge="
         
         if prompt.hasPrefix(dsBridgePrefix) {
@@ -397,13 +401,14 @@ extension NTLWebView: WKUIDelegate {
         }
     }
     
-    internal func handleDSBridgeSyncCall(method: String, argStr: String) -> String {
+    func handleDSBridgeSyncCall(method: String, argStr: String) -> String {
         // 解析参数（同步调用不需要回调）
         let argData = NTLBridgeUtil.parseJSONValue(from: argStr)
         var methodParam: JSONValue = .null
         
         if case let .dictionary(argDict) = argData,
-           let data = argDict["data"] {
+           let data = argDict["data"]
+        {
             methodParam = data
         }
         

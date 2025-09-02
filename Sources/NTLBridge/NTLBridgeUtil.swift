@@ -1,5 +1,20 @@
 import Foundation
 
+func jsStructuredError(jsonValue: JSONValue) -> NSError? {
+    guard case let .dictionary(dictionary) = jsonValue,
+          let name = dictionary["name"]?.stringValue,
+          let message = dictionary["message"]?.stringValue,
+          let stack = dictionary["stack"]?.stringValue
+    else {
+        return nil
+    }
+    let description = "name: \(name)\nmessage: \(message)\nstack: \(stack)"
+    let userInfo: [String: Any] = [
+        NSLocalizedDescriptionKey: description,
+    ]
+    return NSError(domain: "NTLBridge", code: -1, userInfo: userInfo)
+}
+
 /// Bridge错误类型
 public enum NTLBridgeError: Error, LocalizedError {
     case invalidValue
@@ -9,15 +24,14 @@ public enum NTLBridgeError: Error, LocalizedError {
         switch self {
         case .invalidValue:
             return "Invalid value for conversion"
-        case .typeConversionFailed(let error):
+        case let .typeConversionFailed(error):
             return "Type conversion failed: \(error.localizedDescription)"
         }
     }
 }
 
 /// Bridge工具类，提供JSON序列化/反序列化功能
-public final class NTLBridgeUtil {
-    
+public enum NTLBridgeUtil {
     // MARK: - JSON Encoder/Decoder
     
     /// 创建JSONEncoder实例，可被子类重写
@@ -76,45 +90,7 @@ public final class NTLBridgeUtil {
         return JSONValue(any: any) ?? .null
     }
     
-    /// 将JSONValue转换为Any类型
-    /// - Parameter value: 要转换的JSONValue
-    /// - Returns: 转换后的Any值
-    public static func anyValue(from value: JSONValue) -> Any? {
-        return value.rawValue
-    }
-    
-    // MARK: - Array Conversion
-    
-    /// 将参数数组转换为JSONValue数组
-    /// - Parameter args: 参数数组
-    /// - Returns: JSONValue数组
-    public static func jsonArguments(from args: [Any?]) -> [JSONValue] {
-        return args.map { jsonValue(from: $0) }
-    }
-    
-    /// 将JSONValue数组转换为Any数组
-    /// - Parameter values: JSONValue数组
-    /// - Returns: Any数组
-    public static func anyArguments(from values: [JSONValue]) -> [Any?] {
-        return values.map { anyValue(from: $0) }
-    }
-    
     // MARK: - Message Parsing
-    
-    /// 解析来自JavaScript的消息
-    /// - Parameter message: 消息字符串
-    /// - Returns: 解析后的JSInboundMessage，解析失败返回nil
-    public static func parseInboundMessage(_ message: String) -> JSInboundMessage? {
-        guard let data = message.data(using: .utf8) else {
-            return nil
-        }
-        
-        do {
-            return try decoder.decode(JSInboundMessage.self, from: data)
-        } catch {
-            return nil
-        }
-    }
     
     /// 编码发往JavaScript的调用信息
     /// - Parameter callInfo: 调用信息
@@ -129,20 +105,6 @@ public final class NTLBridgeUtil {
     }
     
     // MARK: - Type Conversion
-    
-    /// 将JSONValue转换为指定类型
-    /// - Parameter value: 要转换的JSONValue
-    /// - Returns: 转换后的指定类型，转换失败返回nil
-    public static func convertValue<T: Decodable>(_ value: JSONValue?) -> T? {
-        guard let value = value else { return nil }
-        
-        do {
-            let data = try encoder.encode(value)
-            return try decoder.decode(T.self, from: data)
-        } catch {
-            return nil
-        }
-    }
     
     /// 将JSONValue转换为指定类型，抛出错误
     /// - Parameter value: 要转换的JSONValue
@@ -165,8 +127,8 @@ public final class NTLBridgeUtil {
     /// - Parameter methodName: 方法名
     /// - Returns: 是否有效
     public static func isValidMethodName(_ methodName: String) -> Bool {
-        return !methodName.isEmpty && 
-               !methodName.contains(" ") && 
-               !methodName.hasPrefix("_")
+        return !methodName.isEmpty &&
+            !methodName.contains(" ") &&
+            !methodName.hasPrefix("_")
     }
 }
