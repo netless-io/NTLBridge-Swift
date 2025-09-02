@@ -75,42 +75,6 @@ public enum JSONValue: Codable, Equatable {
     
     // MARK: - Convenience Initializers
     
-    /// 从Any类型创建JSONValue
-    public init?(any value: Any?) {
-        guard let value = value else {
-            self = .null
-            return
-        }
-        
-        switch value {
-        case let stringValue as String:
-            self = .string(stringValue)
-        case let boolValue as Bool:
-            self = .bool(boolValue)
-        case let intValue as Int:
-            self = .number(Double(intValue))
-        case let doubleValue as Double:
-            self = .number(doubleValue)
-        case let floatValue as Float:
-            self = .number(Double(floatValue))
-        case let numberValue as NSNumber:
-            // 区分布尔值和数字（NSNumber来源于ObjC）
-            if numberValue.isBoolValue {
-                self = .bool(numberValue.boolValue)
-            } else {
-                self = .number(numberValue.doubleValue)
-            }
-        case let arrayValue as [Any]:
-            let jsonValues = arrayValue.compactMap { JSONValue(any: $0) }
-            self = .array(jsonValues)
-        case let dictValue as [String: Any]:
-            let jsonDict = dictValue.compactMapValues { JSONValue(any: $0) }
-            self = .dictionary(jsonDict)
-        default:
-            return nil
-        }
-    }
-    
     /// 从Encodable类型创建JSONValue
     public init<T: Encodable>(encodable value: T) {
         let encoder = NTLBridgeUtil.createEncoder()

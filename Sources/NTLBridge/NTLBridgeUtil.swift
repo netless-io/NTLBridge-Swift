@@ -83,13 +83,6 @@ public enum NTLBridgeUtil {
         }
     }
     
-    /// 将Any类型转换为JSONValue
-    /// - Parameter any: 要转换的Any值
-    /// - Returns: 转换后的JSONValue，转换失败返回null
-    public static func jsonValue(from any: Any?) -> JSONValue {
-        return JSONValue(any: any) ?? .null
-    }
-    
     // MARK: - Message Parsing
     
     /// 编码发往JavaScript的调用信息

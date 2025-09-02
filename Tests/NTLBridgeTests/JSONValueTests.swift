@@ -128,57 +128,6 @@ struct JSONValueTests {
         #expect(value == .null)
     }
     
-    // MARK: - Any Conversion Tests
-    
-    @Test("String from Any")
-    func testStringFromAny() {
-        let value = JSONValue(any: "Hello")
-        #expect(value == .string("Hello"))
-    }
-    
-    @Test("NSNumber from Any")
-    func testNSNumberFromAny() {
-        let numberValue = JSONValue(any: NSNumber(value: 42))
-        #expect(numberValue == .number(42))
-        
-        let boolValue = JSONValue(any: NSNumber(value: true))
-        #expect(boolValue == .bool(true))
-    }
-    
-    @Test("Array from Any")
-    func testArrayFromAny() {
-        let anyArray: [Any] = ["hello", 42, true]
-        let value = JSONValue(any: anyArray)
-        let expected = JSONValue.array([.string("hello"), .number(42), .bool(true)])
-        
-        #expect(value == expected)
-    }
-    
-    @Test("Dictionary from Any")
-    func testDictionaryFromAny() {
-        let anyDict: [String: Any] = ["name": "John", "age": 30]
-        let value = JSONValue(any: anyDict)
-        let expected = JSONValue.dictionary([
-            "name": .string("John"),
-            "age": .number(30)
-        ])
-        
-        #expect(value == expected)
-    }
-    
-    @Test("Nil from Any")
-    func testNilFromAny() {
-        let value = JSONValue(any: nil)
-        #expect(value == .null)
-    }
-    
-    @Test("Invalid type from Any")
-    func testInvalidTypeFromAny() {
-        struct CustomStruct {}
-        let value = JSONValue(any: CustomStruct())
-        #expect(value == nil)
-    }
-    
     // MARK: - Codable Tests
     
     @Test("JSON encoding and decoding")

@@ -78,43 +78,6 @@ struct NTLBridgeUtilTests {
         #expect(emptyResult == .null)
     }
     
-    // MARK: - Any Conversion Tests
-    
-    @Test("Any to JSONValue conversion")
-    func testAnyToJSONValue() {
-        // String
-        let stringValue = NTLBridgeUtil.jsonValue(from: "hello")
-        #expect(stringValue == .string("hello"))
-        
-        // Int
-        let intValue = NTLBridgeUtil.jsonValue(from: 42)
-        #expect(intValue == .number(42))
-        
-        // Double
-        let doubleValue = NTLBridgeUtil.jsonValue(from: 3.14)
-        #expect(doubleValue == .number(3.14))
-        
-        // Bool
-        let boolValue = NTLBridgeUtil.jsonValue(from: true)
-        #expect(boolValue == .bool(true))
-        
-        // NSNumber
-        let nsNumberValue = NTLBridgeUtil.jsonValue(from: NSNumber(value: 123))
-        #expect(nsNumberValue == .number(123))
-        
-        // Array
-        let arrayValue = NTLBridgeUtil.jsonValue(from: ["hello", 42, true])
-        #expect(arrayValue == .array([.string("hello"), .number(42), .bool(true)]))
-        
-        // Dictionary
-        let dictValue = NTLBridgeUtil.jsonValue(from: ["key": "value"])
-        #expect(dictValue == .dictionary(["key": .string("value")]))
-        
-        // Nil
-        let nilValue = NTLBridgeUtil.jsonValue(from: nil)
-        #expect(nilValue == .null)
-    }
-    
     // MARK: - Message Parsing Tests
     
     @Test("Encode call info")

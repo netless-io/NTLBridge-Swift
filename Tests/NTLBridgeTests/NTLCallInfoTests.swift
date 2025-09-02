@@ -6,7 +6,16 @@ import Foundation
 struct NTLCallInfoTests {
     
     // MARK: - Initialization Tests
-    
+
+    @Test("Nil test")
+    func testNilValue() throws {
+//        let callInfo = try NTLCallInfo(method: "testMethod", callbackId: 123, anyArrayData: [1, nil])
+//        let data = callInfo.data.data(using: .utf8)!
+//        let object = try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])
+//        let array = object as! [Any]
+//        #expect(array.count == 2)
+    }
+
     @Test("Basic initialization")
     func testBasicInitialization() {
         let callInfo = NTLCallInfo(method: "testMethod", callbackId: 123, data: "{\"key\":\"value\"}")
