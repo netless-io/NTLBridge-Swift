@@ -120,8 +120,6 @@ public enum NTLBridgeUtil {
     /// - Parameter methodName: 方法名
     /// - Returns: 是否有效
     public static func isValidMethodName(_ methodName: String) -> Bool {
-        return !methodName.isEmpty &&
-            !methodName.contains(" ") &&
-            !methodName.hasPrefix("_")
+        return !methodName.isEmpty && !methodName.contains(" ")
     }
 }

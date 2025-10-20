@@ -100,13 +100,13 @@ struct NTLBridgeUtilTests {
         #expect(NTLBridgeUtil.isValidMethodName("test123"))
         #expect(NTLBridgeUtil.isValidMethodName("test.method"))
         #expect(NTLBridgeUtil.isValidMethodName("test-method"))
+        #expect(!NTLBridgeUtil.isValidMethodName("private"))
     }
     
     @Test("Invalid method names")
     func testInvalidMethodNames() {
         #expect(!NTLBridgeUtil.isValidMethodName(""))
         #expect(!NTLBridgeUtil.isValidMethodName("test method"))
-        #expect(!NTLBridgeUtil.isValidMethodName("_private"))
     }
     
     // MARK: - Performance and Edge Cases
