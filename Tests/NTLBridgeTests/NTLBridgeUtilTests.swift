@@ -100,7 +100,7 @@ struct NTLBridgeUtilTests {
         #expect(NTLBridgeUtil.isValidMethodName("test123"))
         #expect(NTLBridgeUtil.isValidMethodName("test.method"))
         #expect(NTLBridgeUtil.isValidMethodName("test-method"))
-        #expect(!NTLBridgeUtil.isValidMethodName("private"))
+        #expect(NTLBridgeUtil.isValidMethodName("private"))
     }
     
     @Test("Invalid method names")

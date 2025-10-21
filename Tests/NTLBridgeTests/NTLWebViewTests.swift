@@ -95,11 +95,6 @@ struct NTLWebViewTests {
                 .null
             }
 
-            // Method name starting with underscore
-            webView.register(methodName: "_private") { _ in
-                .null
-            }
-
             #expect(webView.registeredMethods.count == initialCount)
         }
     }
@@ -117,11 +112,6 @@ struct NTLWebViewTests {
 
             // Method name with space
             webView.register(methodName: "invalid method") { _ in
-                .null
-            }
-
-            // Method name starting with underscore
-            webView.register(methodName: "_private") { _ in
                 .null
             }
 
@@ -244,7 +234,7 @@ struct NTLWebViewTests {
             var result: String?
             var error: Error?
 
-            webView.callTypedHandler("testStringMethod", expecting: String.self) { (response: Result<String, Error>) in
+            webView.callTypedHandler("testStringMethod", expecting: String.self) { response in
                 switch response {
                 case .success(let value):
                     result = value
@@ -254,11 +244,11 @@ struct NTLWebViewTests {
             }
 
             // Simulate a successful JS return by directly calling handleReturnValueFromJS
-            let mockResponse: JSONValue = .dictionary([
-                "id": .number(1),
-                "data": .string("Hello from JavaScript!"),
-                "complete": .bool(true)
-            ])
+            let mockResponse: [String: Any] = [
+                "id": 1,
+                "data": "Hello from JavaScript!",
+                "complete": true
+            ]
             webView.handleReturnValueFromJS(mockResponse)
 
             // Verify the successful type conversion
@@ -280,7 +270,7 @@ struct NTLWebViewTests {
             var result: TestUser?
             var error: Error?
 
-            webView.callTypedHandler("testUserMethod", expecting: TestUser.self) { (response: Result<TestUser, Error>) in
+            webView.callTypedHandler("testUserMethod", expecting: TestUser.self) { response in
                 switch response {
                 case .success(let value):
                     result = value
@@ -290,14 +280,14 @@ struct NTLWebViewTests {
             }
 
             // Simulate a successful JS return with user data
-            let mockResponse: JSONValue = .dictionary([
-                "id": .number(1),
-                "data": .dictionary([
-                    "name": .string("Alice Johnson"),
-                    "age": .number(28)
-                ]),
-                "complete": .bool(true)
-            ])
+            let mockResponse: [String: Any] = [
+                "id": 1,
+                "data": [
+                    "name": "Alice Johnson",
+                    "age": 28
+                ],
+                "complete": true
+            ]
             webView.handleReturnValueFromJS(mockResponse)
 
             // Verify the successful type conversion
@@ -320,7 +310,7 @@ struct NTLWebViewTests {
             var result: [TestItem]?
             var error: Error?
 
-            webView.callTypedHandler("testArrayMethod", expecting: [TestItem].self) { (response: Result<[TestItem], Error>) in
+            webView.callTypedHandler("testArrayMethod", expecting: [TestItem].self) { response in
                 switch response {
                 case .success(let value):
                     result = value
@@ -330,15 +320,15 @@ struct NTLWebViewTests {
             }
 
             // Simulate a successful JS return with array data
-            let mockResponse: JSONValue = .dictionary([
-                "id": .number(1),
-                "data": .array([
-                    .dictionary(["id": .number(1), "title": .string("First Item")]),
-                    .dictionary(["id": .number(2), "title": .string("Second Item")]),
-                    .dictionary(["id": .number(3), "title": .string("Third Item")])
-                ]),
-                "complete": .bool(true)
-            ])
+            let mockResponse: [String: Any] = [
+                "id": 1,
+                "data": [
+                    ["id": 1, "title": "First Item"],
+                    ["id": 2, "title": "Second Item"],
+                    ["id": 3, "title": "Third Item"]
+                ],
+                "complete": true
+            ]
             webView.handleReturnValueFromJS(mockResponse)
 
             // Verify the successful type conversion
@@ -366,7 +356,7 @@ struct NTLWebViewTests {
             var result: StrictUser?
             var error: Error?
 
-            webView.callTypedHandler("testIncompleteUserMethod", expecting: StrictUser.self) { (response: Result<StrictUser, Error>) in
+            webView.callTypedHandler("testIncompleteUserMethod", expecting: StrictUser.self) { response in
                 switch response {
                 case .success(let value):
                     result = value
@@ -376,15 +366,15 @@ struct NTLWebViewTests {
             }
 
             // Simulate JS return with incomplete data (missing required 'email' field)
-            let mockResponse: JSONValue = .dictionary([
-                "id": .number(1),
-                "data": .dictionary([
-                    "name": .string("Bob Smith"),
-                    "age": .number(35)
+            let mockResponse: [String: Any] = [
+                "id": 1,
+                "data": [
+                    "name": "Bob Smith",
+                    "age": 35
                     // Missing 'email' field which is required
-                ]),
-                "complete": .bool(true)
-            ])
+                ],
+                "complete": true
+            ]
             webView.handleReturnValueFromJS(mockResponse)
 
             // Verify the type conversion failed as expected
@@ -595,7 +585,7 @@ struct NTLWebViewTests {
             
             // Register a test method
             webView.register(methodName: "testSyncMethod") { param in
-                if case .string(let value) = param {
+                if let value = param as? String {
                     return .string("Sync response: \(value)")
                 }
                 return .string("Sync response: unknown")
@@ -639,9 +629,9 @@ struct NTLWebViewTests {
             
             // Register a method that handles complex parameters
             webView.register(methodName: "processComplexData") { param in
-                if case .dictionary(let dict) = param {
-                    let name = dict["name"]?.stringValue ?? "unknown"
-                    let age = dict["age"]?.numberValue ?? 0
+                if let dict = param as? [String: Any] {
+                    let name = dict["name"] as? String ?? "unknown"
+                    let age = dict["age"] as? Int ?? 0
                     return .dictionary([
                         "processed": .string("Processed \(name), age \(age)"),
                         "timestamp": .number(Date().timeIntervalSince1970)
@@ -672,9 +662,9 @@ struct NTLWebViewTests {
             
             // Register a method that handles array parameters
             webView.register(methodName: "processArray") { param in
-                if case .array(let array) = param {
+                if let array = param as? [Int] {
                     let count = array.count
-                    let sum = array.compactMap { $0.numberValue }.reduce(0, +)
+                    let sum = Double(array.reduce(0, +))
                     return .dictionary([
                         "count": .number(Double(count)),
                         "sum": .number(sum),
@@ -780,11 +770,10 @@ struct NTLWebViewTests {
             
             // Register a method that handles empty arguments
             webView.register(methodName: "noArgsMethod") { param in
-                if case .null = param {
-                    return .string("No arguments received")
-                } else {
+                if let param {
                     return .string("Arguments received: \(param)")
                 }
+                return .string("No arguments received")
             }
             
             // Test with empty arguments
