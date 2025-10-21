@@ -60,7 +60,7 @@ public extension NTLWebView {
     /// 注册一个与实例绑定的异步方法
     func registerAsync<R: Decodable>(
         methodName: String,
-        expecting returnType: R,
+        expecting returnType: R.Type,
         handler: @escaping (_ param: R, _ completion: @escaping (Result<JSONValue?, Error>) -> Void) -> Void
     ) {
         let wrappedAsyncHandler: JSAsyncMethodHandler = { param, completion in
