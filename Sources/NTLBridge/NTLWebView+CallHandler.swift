@@ -19,6 +19,20 @@ public extension NTLWebView {
         }
     }
 
+    /// 调用 js bridge 方法，接受已经序列化好的 JSON 参数字符串
+    func callHandler(
+        _ method: String,
+        jsonString: String,
+        completion: ((Result<JSONValue?, Error>) -> Void)? = nil
+    ) {
+        let callInfo = NTLCallInfo(
+            method: method,
+            callbackId: generateCallbackId(),
+            data: jsonString
+        )
+        internalcallHandler(callInfo: callInfo, completion: completion)
+    }
+
     /// 调用 js bridge 方法，支持直接传入 Codable 参数数组并返回指定类型
     func callTypedHandler<T: Encodable, U: Decodable>(
         _ method: String,
