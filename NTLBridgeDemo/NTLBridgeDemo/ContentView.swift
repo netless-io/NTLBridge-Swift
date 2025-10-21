@@ -25,7 +25,7 @@ class Model {
         }
         webView.register(methodName: "testNoArgSyn") { param in
             print("get testNoArgSyn arg", param)
-            return .init(any: "testNoArgSyn No argument received")
+            return "testNoArgSyn No argument received"
         }
         webView.registerAsync(methodName: "testNoArgAsyn") { param, callback in
             callback(.success("testNoArgAsyn oh no param"))
@@ -36,10 +36,12 @@ class Model {
             }
         }
         webView.register(methodName: "echo.syn") { param in
-            return .init(any: "Echo \(param.stringValue ?? "")")
+            
+            let str = "Echo \(String(describing: param))"
+            return .string(str)
         }
         webView.registerAsync(methodName: "echo.asyn") { param, callback in
-            callback(.success(.string("Echo asyn \(param.stringValue ?? "")")))
+            callback(.success(.string("Echo asyn \(String(describing: param))")))
         }
         self.webView = webView
     }
@@ -51,7 +53,7 @@ class Model {
 struct ContentView: View {
     let model: Model = Model()
     
-    func process(_ result: Result<JSONValue?, Error>) {
+    func process(_ result: Result<Any?, Error>) {
         switch result {
         case .success(let value):
             model.jsResult = value.debugDescription
@@ -92,7 +94,7 @@ struct ContentView: View {
                 model.webView.callHandler("asyn.error", arguments: ["AAA"]) { process($0) }
             }
             Button("Call js async multiParam") {
-                model.webView.callHandler("asyn.multiParam", arguments: ["BBB", ["ppp": "ttt"]]) { process($0) }
+                model.webView.callHandler("asyn.multiParam", arguments: [JSONValue.string("BBB"), JSONValue.dictionary(["ppp": "ttt"])] ) { process($0) }
             }
             
             // Example of new Codable parameter support
