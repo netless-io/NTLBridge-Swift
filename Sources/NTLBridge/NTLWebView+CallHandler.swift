@@ -4,24 +4,15 @@ public extension NTLWebView {
     /// 调用 js bridge 方法，支持直接传入 Codable 参数数组
     func callHandler<T: Encodable>(
         _ method: String,
-        arguments: [T],
+        arguments: [T] = [String](),
         completion: ((Result<JSONValue?, Error>) -> Void)? = nil
     ) {
         do {
-            let callInfo = try NTLCallInfo(method: method, callbackId: generateCallbackId(), codableData: arguments)
-            internalcallHandler(callInfo: callInfo, completion: completion)
-        } catch {
-            completion?(.failure(error))
-        }
-    }
-
-    /// 调用 js bridge 方法（无参数版本）
-    func callHandler(
-        _ method: String,
-        completion: ((Result<JSONValue?, Error>) -> Void)? = nil
-    ) {
-        do {
-            let callInfo = try NTLCallInfo(method: method, callbackId: generateCallbackId(), codableData: [String]())
+            let callInfo = try NTLCallInfo(
+                method: method,
+                callbackId: generateCallbackId(),
+                codableData: arguments
+            )
             internalcallHandler(callInfo: callInfo, completion: completion)
         } catch {
             completion?(.failure(error))
@@ -31,7 +22,7 @@ public extension NTLWebView {
     /// 调用 js bridge 方法，支持直接传入 Codable 参数数组并返回指定类型
     func callTypedHandler<T: Encodable, U: Decodable>(
         _ method: String,
-        arguments: [T],
+        arguments: [T] = [String](),
         expecting type: U.Type,
         completion: @escaping (Result<U, Error>) -> Void
     ) {
@@ -48,14 +39,5 @@ public extension NTLWebView {
                 completion(.failure(error))
             }
         }
-    }
-
-    /// 调用 js bridge 方法并返回指定类型（无参数版本）
-    func callTypedHandler<U: Decodable>(
-        _ method: String,
-        expecting type: U.Type,
-        completion: @escaping (Result<U, Error>) -> Void
-    ) {
-        callTypedHandler(method, arguments: [String](), expecting: type, completion: completion)
     }
 }
