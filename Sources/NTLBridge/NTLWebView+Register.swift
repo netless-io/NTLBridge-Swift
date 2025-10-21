@@ -30,13 +30,13 @@ public extension NTLWebView {
     /// 注册一个静态或独立的闭包
     func register(
         methodName: String,
-        handler: @escaping (_ param: JSONValue) throws -> JSONValue?
+        handler: @escaping JSRawResponseMethodHandler
     ) {
         guard NTLBridgeUtil.isValidMethodName(methodName) else {
             debugLog("Invalid method name or namespace: \(methodName)")
             return
         }
-        let container = JSMethodHandlerContainer(handler: handler)
+        let container = JSMethodHandlerContainer(rawResponseHandler: handler)
         registeredHandlers[methodName] = container
         debugLog("Registered static method: \(methodName)")
     }

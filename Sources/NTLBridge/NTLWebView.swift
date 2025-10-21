@@ -12,7 +12,7 @@ open class NTLWebView: WKWebView {
     var callbackIdCounter: Int = 0
     
     /// 待处理的回调字典，存储Native到JS的回调
-    var pendingCallbacks: [Int: (Result<JSONValue?, Error>) -> Void] = [:]
+    var pendingCallbacks: [Int: (Result<Any?, Error>) -> Void] = [:]
     
     /// 弱引用代理，用于处理脚本消息
     var scriptMessageProxy: WeakScriptMessageHandlerProxy?
@@ -116,7 +116,7 @@ open class NTLWebView: WKWebView {
     /// - Parameters:
     ///   - callInfo: 调用信息
     ///   - completion: 完成回调
-    func internalcallHandler(callInfo: NTLCallInfo, completion: ((Result<JSONValue?, Error>) -> Void)? = nil) {
+    func internalcallHandler(callInfo: NTLCallInfo, completion: ((Result<Any?, Error>) -> Void)? = nil) {
         if isInitialized {
             // 如果已初始化，直接调度
             dispatchJavascriptCall(callInfo)
@@ -147,9 +147,9 @@ open class NTLWebView: WKWebView {
     /// 内部使用的注册方法，跳过验证
     private func registerInternal(
         methodName: String,
-        handler: @escaping (_ param: JSONValue) throws -> JSONValue?
+        handler: @escaping JSRawResponseMethodHandler
     ) {
-        let container = JSMethodHandlerContainer(handler: handler)
+        let container = JSMethodHandlerContainer(rawResponseHandler: handler)
         registeredHandlers[methodName] = container
         
         debugLog("Registered internal method: \(methodName)")
@@ -235,14 +235,15 @@ extension NTLWebView: WKScriptMessageHandler {
         debugLog("Handling DSBridge call: \(method) with args: \(argStr)")
         
         // 解析参数：{"data": actualData, "_dscbstub": "callbackId"}
-        let argData = NTLBridgeUtil.parseJSONValue(from: argStr)
-        var callbackStub: String?
-        var methodParam: JSONValue = .null
-        
-        if case let .dictionary(argDict) = argData {
-            callbackStub = argDict["_dscbstub"]?.stringValue
-            methodParam = argDict["data"] ?? .null
+        guard let data = argStr.data(using: .utf8),
+              let argDict = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
+            debugLog("Failed to parse DSBridge message format")
+            return
         }
+
+        let callbackStub = argDict["_dscbstub"] as? String
+        let methodParam = argDict["data"] as Any // 保持为 Any 类型
         
         // 首先清理已释放的处理器
         cleanupDeallocatedHandlers()
@@ -263,17 +264,13 @@ extension NTLWebView: WKScriptMessageHandler {
             return
         }
         
-        if container.isAsync {
-            // 异步处理
-            guard let asyncHandler = container.asyncHandler else {
-                let error = "Async handler not found for method: \(method)"
-                debugLog(error)
-                sendDSBridgeError(callbackStub: callbackStub, error: error)
-                return
-            }
-            
-            do {
-                try asyncHandler(methodParam) { [weak self] result in
+        do {
+            switch container.handler {
+            case let .syncHandler(handler):
+                let result = try handler(methodParam)
+                sendDSBridgeResult(callbackStub: callbackStub, result: result)
+            case let .asyncHandler(handler):
+                try handler(methodParam) { [weak self] result in
                     DispatchQueue.main.async {
                         switch result {
                         case let .success(value):
@@ -283,36 +280,29 @@ extension NTLWebView: WKScriptMessageHandler {
                         }
                     }
                 }
-            } catch {
-                debugLog("Method call failed: \(error)")
-                sendDSBridgeError(callbackStub: callbackStub, error: error.localizedDescription)
             }
-        } else {
-            // 同步处理
-            do {
-                let result = try container.handler(methodParam)
-                sendDSBridgeResult(callbackStub: callbackStub, result: result)
-            } catch {
-                debugLog("Method call failed: \(error)")
-                sendDSBridgeError(callbackStub: callbackStub, error: error.localizedDescription)
-            }
+        } catch {
+            debugLog("Method call failed: \(error)")
+            sendDSBridgeError(callbackStub: callbackStub, error: error.localizedDescription)
         }
     }
     
-    func handleReturnValueFromJS(_ param: JSONValue) {
-        guard case let .dictionary(dictionary) = param, let callbackId = dictionary["id"]?.numberValue
+    func handleReturnValueFromJS(_ param: Any) {
+        guard
+            let dict = param as? [String: Any],
+            let callbackIdInt = dict["id"] as? Int
         else { return }
-        let callbackIdInt = Int(callbackId)
-        let data = dictionary["data"]
-        let complete = dictionary["complete"]?.boolValue ?? true
-        let error = dictionary["error"]
+        
+        let complete = dict["complete"] as? Bool ?? true
+        let error = dict["error"]
+        let data = dict["data"]
         
         if let completion = pendingCallbacks[callbackIdInt] {
             if complete {
                 pendingCallbacks.removeValue(forKey: callbackIdInt)
             }
             if let error {
-                if let structedError = jsStructuredError(jsonValue: error) {
+                if let structedError = jsStructuredError(error) {
                     completion(.failure(structedError))
                     return
                 }
@@ -403,24 +393,28 @@ extension NTLWebView: WKUIDelegate {
     
     func handleDSBridgeSyncCall(method: String, argStr: String) -> String {
         // 解析参数（同步调用不需要回调）
-        let argData = NTLBridgeUtil.parseJSONValue(from: argStr)
-        var methodParam: JSONValue = .null
-        
-        if case let .dictionary(argDict) = argData,
-           let data = argDict["data"]
-        {
-            methodParam = data
+        guard let data = argStr.data(using: .utf8)
+        else {
+            debugLog("Failed to parse sync DSBridge message format")
+            return createDSBridgeErrorResponse(error: "Failed to parse sync DSBridge message format")
         }
-        
+        let methodParam: Any?
+        let argDict = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        if let argDict {
+            methodParam = argDict["data"]
+        } else {
+            methodParam = nil
+        }
+
         // 清理已释放的处理器
         cleanupDeallocatedHandlers()
-        
+
         guard let container = registeredHandlers[method] else {
             let error = "Method not found: \(method)"
             debugLog(error)
             return createDSBridgeErrorResponse(error: error)
         }
-        
+
         // 检查处理器是否仍然有效
         guard container.isValid else {
             let error = "Method handler target has been deallocated: \(method)"
@@ -428,18 +422,18 @@ extension NTLWebView: WKUIDelegate {
             registeredHandlers.removeValue(forKey: method)
             return createDSBridgeErrorResponse(error: error)
         }
-        
-        // 异步方法不允许同步调用
-        if container.isAsync {
-            let error = "Async method cannot be called synchronously: \(method)"
-            debugLog(error)
-            return createDSBridgeErrorResponse(error: error)
-        }
-        
+
         do {
-            let result = try container.handler(methodParam)
-            debugLog("Sync method call succeeded: \(method) with result: \(String(describing: result))")
-            return createDSBridgeSuccessResponse(result: result)
+            switch container.handler {
+            case let .syncHandler(handler):
+                let result = try handler(methodParam)
+                debugLog("Sync method call succeeded: \(method) with result: \(String(describing: result))")
+                return createDSBridgeSuccessResponse(result: result)
+            default:
+                let error = "Async method cannot be called synchronously: asyncMethod"
+                debugLog(error)
+                return createDSBridgeErrorResponse(error: error)
+            }
         } catch {
             debugLog("Sync method call failed: \(error)")
             return createDSBridgeErrorResponse(error: error.localizedDescription)

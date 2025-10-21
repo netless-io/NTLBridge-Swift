@@ -1,10 +1,10 @@
 import Foundation
 
-func jsStructuredError(jsonValue: JSONValue) -> NSError? {
-    guard case let .dictionary(dictionary) = jsonValue,
-          let name = dictionary["name"]?.stringValue,
-          let message = dictionary["message"]?.stringValue,
-          let stack = dictionary["stack"]?.stringValue
+func jsStructuredError(_ dictionary: Any) -> NSError? {
+    guard let dict = dictionary as? [String: Any],
+          let name = dict["name"] as? String,
+          let message = dict["message"] as? String,
+          let stack = dict["stack"] as? String
     else {
         return nil
     }
@@ -31,12 +31,12 @@ public enum NTLBridgeError: Error, LocalizedError {
 }
 
 /// Bridge工具类，提供JSON序列化/反序列化功能
- enum NTLBridgeUtil {
+enum NTLBridgeUtil {
     // MARK: - JSON Encoder/Decoder
     
     /// 创建JSONEncoder实例，可被子类重写
     /// - Returns: 配置好的JSONEncoder实例
-     static func createEncoder() -> JSONEncoder {
+    static func createEncoder() -> JSONEncoder {
         let encoder = JSONEncoder()
         encoder.outputFormatting = []
         return encoder
@@ -44,7 +44,7 @@ public enum NTLBridgeError: Error, LocalizedError {
     
     /// 创建JSONDecoder实例，可被子类重写
     /// - Returns: 配置好的JSONDecoder实例
-     static func createDecoder() -> JSONDecoder {
+    static func createDecoder() -> JSONDecoder {
         let decoder = JSONDecoder()
         return decoder
     }
@@ -57,7 +57,7 @@ public enum NTLBridgeError: Error, LocalizedError {
     /// 将JSONValue转换为JSON字符串
     /// - Parameter value: 要转换的JSONValue
     /// - Returns: JSON字符串，转换失败返回"null"
-     static func jsonString(from value: JSONValue?) -> String {
+    static func jsonString(from value: JSONValue?) -> String {
         guard let value = value else { return "null" }
         
         do {
@@ -71,7 +71,7 @@ public enum NTLBridgeError: Error, LocalizedError {
     /// 从JSON字符串解析JSONValue
     /// - Parameter jsonString: JSON字符串
     /// - Returns: 解析后的JSONValue，解析失败返回null
-     static func parseJSONValue(from jsonString: String) -> JSONValue {
+    static func parseJSONValue(from jsonString: String) -> JSONValue {
         guard let data = jsonString.data(using: .utf8) else {
             return .null
         }
@@ -88,7 +88,7 @@ public enum NTLBridgeError: Error, LocalizedError {
     /// 编码发往JavaScript的调用信息
     /// - Parameter callInfo: 调用信息
     /// - Returns: 编码后的JSON字符串，编码失败返回nil
-     static func encodeCallInfo(_ callInfo: NTLCallInfo) -> String? {
+    static func encodeCallInfo(_ callInfo: NTLCallInfo) -> String? {
         do {
             let data = try encoder.encode(callInfo)
             return String(data: data, encoding: .utf8)
@@ -98,16 +98,16 @@ public enum NTLBridgeError: Error, LocalizedError {
     }
     
     // MARK: - Type Conversion
-    
-    /// 将JSONValue转换为指定类型，抛出错误
-    /// - Parameter value: 要转换的JSONValue
-    /// - Returns: 转换后的指定类型
-    /// - Throws: 类型转换错误
-     static func convertValueOrThrow<T: Decodable>(_ value: JSONValue?) throws -> T {
-        guard let value = value else { throw NTLBridgeError.invalidValue }
-        
+     
+    static func convertValueOrThrow<T: Decodable>(_ value: Any) throws -> T {
+        if let t = value as? T {
+            return t
+        }
+        if !JSONSerialization.isValidJSONObject(value) {
+            throw NTLBridgeError.invalidValue
+        }
         do {
-            let data = try encoder.encode(value)
+            let data = try JSONSerialization.data(withJSONObject: value, options: [])
             return try decoder.decode(T.self, from: data)
         } catch {
             throw NTLBridgeError.typeConversionFailed(error)
@@ -119,7 +119,7 @@ public enum NTLBridgeError: Error, LocalizedError {
     /// 验证方法名是否有效
     /// - Parameter methodName: 方法名
     /// - Returns: 是否有效
-     static func isValidMethodName(_ methodName: String) -> Bool {
+    static func isValidMethodName(_ methodName: String) -> Bool {
         return !methodName.isEmpty && !methodName.contains(" ")
     }
 }

@@ -5,7 +5,7 @@ public extension NTLWebView {
     func callHandler<T: Encodable>(
         _ method: String,
         arguments: [T] = [String](),
-        completion: ((Result<JSONValue?, Error>) -> Void)? = nil
+        completion: ((Result<Any?, Error>) -> Void)? = nil
     ) {
         do {
             let callInfo = try NTLCallInfo(
@@ -23,7 +23,7 @@ public extension NTLWebView {
     func callHandler(
         _ method: String,
         jsonString: String,
-        completion: ((Result<JSONValue?, Error>) -> Void)? = nil
+        completion: ((Result<Any?, Error>) -> Void)? = nil
     ) {
         let callInfo = NTLCallInfo(
             method: method,
@@ -38,13 +38,17 @@ public extension NTLWebView {
         _ method: String,
         arguments: [T] = [String](),
         expecting type: U.Type,
-        completion: @escaping (Result<U, Error>) -> Void
+        completion: @escaping (Result<U?, Error>) -> Void
     ) {
         callHandler(method, arguments: arguments) { result in
             switch result {
-            case .success(let jsonValue):
+            case .success(let result):
+                guard let result else {
+                    completion(.success(nil))
+                    return
+                }
                 do {
-                    let typedValue: U = try NTLBridgeUtil.convertValueOrThrow(jsonValue)
+                    let typedValue: U = try NTLBridgeUtil.convertValueOrThrow(result)
                     completion(.success(typedValue))
                 } catch {
                     completion(.failure(error))
