@@ -38,16 +38,15 @@ public extension NTLWebView {
         _ method: String,
         arguments: [T] = [String](),
         expecting type: U.Type,
-        completion: @escaping (Result<U?, Error>) -> Void
+        completion: @escaping (Result<U, Error>) -> Void
     ) {
         callHandler(method, arguments: arguments) { result in
             switch result {
             case .success(let result):
-                guard let result else {
-                    completion(.success(nil))
-                    return
-                }
                 do {
+                    guard let result else {
+                        throw NTLBridgeError.invalidValue
+                    }
                     let typedValue: U = try NTLBridgeUtil.convertValueOrThrow(result)
                     completion(.success(typedValue))
                 } catch {
